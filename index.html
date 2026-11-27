@@ -1,2073 +1,1451 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>E-CARD TACTICS | デジタルカードゲーム</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Inter', 'Noto Sans JP', sans-serif;
-      background-color: #0f172a;
-      color: #f8fafc;
-      user-select: none;
-      overflow-x: hidden;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>モンスターカードバトル（最新仕様＋CSV対応版）</title>
+<style>
+  :root {
+    --bg: #12161f;
+    --panel: #1b2230;
+    --panel-light: #252e42;
+    --border: #36415c;
+    --text: #eef2fa;
+    --muted: #98a4be;
+    --accent: #4da3ff;
+    --danger: #ff5c6c;
+    --success: #38d399;
+    --warn: #f6c445;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.45;
+  }
+  h1 { font-size: 1.2rem; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; background: var(--panel-light); border: 1px solid var(--border); padding: 2px 8px; border-radius: 99px; color: var(--accent); }
+  .container { max-width: 1120px; margin: 0 auto; }
+  
+  /* コントロールバー */
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    background: var(--panel); padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  select, button, input[type="number"], input[type="text"] {
+    background: var(--panel-light); color: var(--text); border: 1px solid var(--border);
+    padding: 6px 10px; border-radius: 6px; font-size: 0.9rem; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); background: #2d3850; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.primary { background: #1e5aa8; border-color: #3a7bd5; font-weight: bold; }
+  button.primary:hover:not(:disabled) { background: #266cc7; }
+  button.danger { background: #7a222d; border-color: #a83240; }
+  button.success { background: #1c6b50; border-color: #299470; font-weight: bold; }
 
-    /* カスタムスクロールバー */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #1e293b;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #475569;
-      border-radius: 3px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #64748b;
-    }
+  /* ステータスバー */
+  .status-grid {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center;
+    background: var(--panel); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .life-box { display: flex; flex-direction: column; gap: 4px; }
+  .life-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 0.95rem; }
+  .life-bar-bg { width: 100%; height: 12px; background: #0b0e14; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .life-bar-fill { height: 100%; transition: width 0.25s ease; }
+  .life-you { background: linear-gradient(90deg, #2b8a3e, #40c057); }
+  .life-cpu { background: linear-gradient(90deg, #c92a2a, #ff6b6b); }
+  .turn-box { text-align: center; padding: 0 10px; }
+  .turn-num { font-size: 1.15rem; font-weight: bold; color: var(--warn); }
+  .phase-label { font-size: 0.85rem; color: var(--accent); font-weight: bold; }
 
-    /* カードアニメーション＆エフェクト */
-    .card-transition {
-      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-    }
-    .card-hover:hover {
-      transform: translateY(-6px) scale(1.03);
-      z-index: 20;
-    }
-    .card-selected-summon {
-      transform: translateY(-10px) scale(1.05);
-      box-shadow: 0 0 20px rgba(56, 189, 248, 0.85);
-      border-color: #38bdf8 !important;
-    }
-    .card-selected-cost {
-      transform: translateY(-8px) scale(1.02);
-      box-shadow: 0 0 18px rgba(250, 204, 21, 0.85);
-      border-color: #facc15 !important;
-    }
-    .card-attacking {
-      transform: translateY(-10px);
-      box-shadow: 0 0 20px rgba(244, 63, 94, 0.8);
-      border-color: #f43f5e !important;
-    }
-    .card-tapped {
-      transform: rotate(7deg) scale(0.96);
-      filter: brightness(0.75);
-    }
-    .card-sick {
-      opacity: 0.85;
-    }
+  /* 盤面エリア */
+  .board-section {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px; margin-bottom: 10px;
+  }
+  .section-title { font-size: 0.85rem; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .slots {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; min-height: 148px;
+  }
+  .hand-slots {
+    display: flex; flex-wrap: wrap; gap: 8px; min-height: 152px;
+  }
+  .hand-slots .card { width: calc(20% - 7px); min-width: 118px; }
+  @media (max-width: 720px) {
+    .slots { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .hand-slots .card { width: calc(33.3% - 6px); min-width: 100px; }
+  }
 
-    @keyframes pulse-border {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.7); }
-      50% { box-shadow: 0 0 0 6px rgba(56, 189, 248, 0); }
-    }
-    .animate-pulse-guide {
-      animation: pulse-border 2s infinite;
-    }
+  /* カードデザイン */
+  .card {
+    background: var(--panel-light); border: 2px solid var(--border); border-radius: 8px;
+    padding: 6px; display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; user-select: none; transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  }
+  .card:hover { transform: translateY(-2px); }
+  .card.selected { border-color: var(--warn); box-shadow: 0 0 10px rgba(246, 196, 69, 0.45); }
+  .card.pay-selected { border-color: var(--danger); background: #36222a; }
+  .card.attacker { border-color: #ff7b54; box-shadow: 0 0 8px rgba(255, 123, 84, 0.4); }
+  .card.tapped { opacity: 0.65; border-style: dashed; }
+  .card.targetable { border-color: var(--danger); cursor: crosshair; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 4px #ff5c6c; } 50% { box-shadow: 0 0 12px #ff5c6c; } }
 
-    @keyframes damage-shake {
-      0%, 100% { transform: translateX(0); }
-      20% { transform: translateX(-6px); }
-      40% { transform: translateX(6px); }
-      60% { transform: translateX(-4px); }
-      80% { transform: translateX(4px); }
-    }
-    .shake {
-      animation: damage-shake 0.35s ease-in-out;
-    }
-  </style>
+  .card-top { display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; font-weight: bold; }
+  .cost-tag { background: #1e5aa8; color: #fff; padding: 1px 5px; border-radius: 4px; }
+  .e-tag { background: #2b7a5b; color: #fff; padding: 1px 5px; border-radius: 4px; }
+  .card-name { font-size: 0.88rem; font-weight: bold; text-align: center; margin: 3px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  
+  .art-box {
+    width: 64px; height: 64px; margin: 2px auto; border-radius: 6px;
+    background: #141923; border: 1px solid #2f3a52;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+  }
+  .art-box img { width: 64px; height: 64px; image-rendering: pixelated; object-fit: contain; }
+  .art-placeholder { font-size: 0.65rem; color: var(--muted); text-align: center; line-height: 1.1; }
+  .art-emoji { font-size: 1.4rem; }
+
+  .ability-tag {
+    font-size: 0.7rem; text-align: center; color: #ffd43b; background: rgba(255, 212, 59, 0.12);
+    border-radius: 4px; padding: 1px 3px; margin: 2px 0; min-height: 16px;
+  }
+  .card-stats { display: flex; justify-content: space-between; font-size: 0.82rem; font-weight: bold; margin-top: 3px; padding-top: 3px; border-top: 1px solid rgba(255,255,255,0.08); }
+  .stat-atk { color: #ff8787; }
+  .stat-hp { color: #69db7c; }
+  .state-badge {
+    position: absolute; top: 24px; right: 4px; font-size: 0.65rem;
+    background: rgba(0,0,0,0.75); padding: 1px 4px; border-radius: 3px; color: #ffd43b;
+  }
+
+  /* アクションパネル・ログ */
+  .action-bar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    background: var(--panel); padding: 10px; border-radius: 8px; border: 1px solid var(--border);
+    margin-bottom: 10px;
+  }
+  .info-text { font-size: 0.88rem; color: var(--text); flex: 1; min-width: 240px; }
+  .log-box {
+    background: #0d1017; border: 1px solid var(--border); border-radius: 8px;
+    padding: 8px 12px; font-size: 0.85rem; margin-bottom: 12px;
+  }
+  .log-item { margin: 2px 0; color: #cfd8ea; }
+  .log-item:first-child { color: #fff; font-weight: bold; }
+
+  /* ブロック割り振りUI */
+  .block-panel {
+    background: #1d2436; border: 2px solid var(--warn); border-radius: 8px;
+    padding: 10px; margin-bottom: 10px;
+  }
+  .block-row {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding: 6px; border-bottom: 1px solid var(--border); font-size: 0.88rem;
+  }
+  .block-row:last-child { border-bottom: none; }
+  .pair-dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+
+  /* 勝敗バナー */
+  .result-banner {
+    text-align: center; padding: 16px; border-radius: 8px; margin-bottom: 10px;
+    font-size: 1.4rem; font-weight: bold; background: var(--panel-light); border: 2px solid var(--accent);
+  }
+
+  /* エディタ・CSV・シミュレーションタブ */
+  .tabs { display: flex; gap: 6px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tab-btn { background: var(--panel); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; }
+  .tab-btn.active { background: var(--accent); color: #0b0e14; font-weight: bold; border-color: var(--accent); }
+  .drawer { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 16px; }
+  .hidden { display: none !important; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { border: 1px solid var(--border); padding: 4px 6px; text-align: center; }
+  th { background: var(--panel-light); }
+  td input { width: 52px; text-align: center; padding: 3px; }
+  td input.name-in { width: 84px; }
+  textarea.csv-area {
+    width: 100%; height: 220px; background: #0d1017; color: #a5d8ff;
+    border: 1px solid var(--border); border-radius: 6px; padding: 8px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.82rem;
+  }
+</style>
 </head>
-<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+<body>
+<div class="container">
+  <h1>
+    モンスターカードバトル
+    <span class="badge">30枚デッキ / 12T制 / CSV編集対応</span>
+  </h1>
 
-  <!-- トップナビゲーションバー -->
-  <header class="bg-slate-900/90 border-b border-slate-800 px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-2 sticky top-0 z-40 backdrop-blur-md">
-    <div class="flex items-center gap-2.5">
-      <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center font-black text-white shadow-lg shadow-sky-500/20">
-        E
+  <!-- 対戦設定バー -->
+  <div class="toolbar">
+    <label>ルール:
+      <select id="ruleMode">
+        <option value="simple">シンプル（能力なし）</option>
+        <option value="extended">拡張（回避・狙撃・補給入り）</option>
+      </select>
+    </label>
+    <label>対戦CPU:
+      <select id="cpuType">
+        <option value="standard">標準（バランス型）</option>
+        <option value="aggro">速攻（低コスト攻め）</option>
+        <option value="defense">堅守（高HP壁・慎重）</option>
+        <option value="heavy">重量（大型エース軸）</option>
+      </select>
+    </label>
+    <button class="primary" onclick="startNewGame()">新規対戦スタート</button>
+    <span style="margin-left:auto; font-size:0.8rem; color:var(--muted);" id="saveStatus">データ: 初期値</span>
+  </div>
+
+  <!-- 勝敗表示 -->
+  <div id="resultBanner" class="result-banner hidden"></div>
+
+  <!-- ライフ・ターン表示 -->
+  <div class="status-grid">
+    <div class="life-box">
+      <div class="life-header">
+        <span>あなた（先攻）</span>
+        <span>ライフ: <span id="youLife">20</span> / 20（山札 <span id="youDeck">30</span>）</span>
       </div>
-      <div>
-        <h1 class="font-extrabold text-base sm:text-lg tracking-tight bg-gradient-to-r from-sky-400 to-indigo-300 bg-clip-text text-transparent">
-          E-CARD TACTICS
-        </h1>
-        <p class="text-[10px] text-slate-400 hidden sm:block">手札エネルギー消費型・対戦カードゲーム</p>
-      </div>
+      <div class="life-bar-bg"><div id="youLifeBar" class="life-bar-fill life-you" style="width:100%"></div></div>
     </div>
-
-    <!-- モード切替タブ -->
-    <nav class="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700/70">
-      <button id="tab-battle" onclick="switchTab('battle')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition bg-sky-600 text-white shadow">
-        ⚔️ 対戦バトル
-      </button>
-      <button id="tab-editor" onclick="switchTab('editor')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-slate-300 hover:text-white">
-        📊 カード・デッキ編集
-      </button>
-      <button id="tab-sim" onclick="switchTab('sim')" class="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-slate-300 hover:text-white">
-        🤖 バランス検証AI
-      </button>
-    </nav>
-
-    <!-- ルール確認ボタン -->
-    <button onclick="toggleRulesModal(true)" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 transition flex items-center gap-1">
-      <span>📖</span> <span class="hidden sm:inline">ルール説明</span>
-    </button>
-  </header>
-
-  <!-- メインコンテンツエリア -->
-  <main class="flex-1 flex flex-col max-w-7xl w-full mx-auto p-2 sm:p-4 gap-3">
-
-    <!-- ========================================== -->
-    <!-- TAB 1: 対戦バトル画面                       -->
-    <!-- ========================================== -->
-    <section id="view-battle" class="flex-1 flex flex-col gap-2.5">
-
-      <!-- 対戦設定＆ステータスバー -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-2.5 sm:px-4 flex flex-wrap items-center justify-between gap-2 shadow-lg">
-        <!-- デッキ・CPU選択 -->
-        <div class="flex flex-wrap items-center gap-2 text-xs">
-          <div class="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1.5 rounded-xl border border-slate-700">
-            <span class="text-sky-400 font-bold">自分デッキ:</span>
-            <select id="select-player-deck" class="bg-slate-900 text-white font-semibold rounded px-1.5 py-0.5 border border-slate-700 focus:outline-none">
-              <option value="標準">標準 (バランス)</option>
-              <option value="速攻">速攻 (アグロ)</option>
-              <option value="堅守">堅守 (コントロール)</option>
-              <option value="重量">重量 (ランプ)</option>
-            </select>
-          </div>
-
-          <div class="flex items-center gap-1.5 bg-slate-800 px-2.5 py-1.5 rounded-xl border border-slate-700">
-            <span class="text-rose-400 font-bold">CPU相手:</span>
-            <select id="select-cpu-deck" class="bg-slate-900 text-white font-semibold rounded px-1.5 py-0.5 border border-slate-700 focus:outline-none">
-              <option value="標準">標準 (バランス)</option>
-              <option value="速攻">速攻 (アグロ)</option>
-              <option value="堅守">堅守 (コントロール)</option>
-              <option value="重量">重量 (ランプ)</option>
-            </select>
-          </div>
-
-          <label class="flex items-center gap-1.5 bg-slate-800/70 px-2.5 py-1.5 rounded-xl border border-slate-700/70 cursor-pointer hover:bg-slate-800">
-            <input type="checkbox" id="toggle-expansion" class="rounded accent-sky-500">
-            <span class="text-slate-300 font-medium">拡張カード有効</span>
-          </label>
-        </div>
-
-        <!-- ターン情報＆新規対戦ボタン -->
-        <div class="flex items-center gap-2 ml-auto">
-          <div class="px-3 py-1 rounded-xl bg-slate-800 border border-slate-700 text-xs sm:text-sm font-extrabold flex items-center gap-2">
-            <span class="text-slate-400">TURN</span>
-            <span id="hud-turn" class="text-amber-400 text-base">1</span>
-            <span class="text-slate-500">/ 12</span>
-          </div>
-          <button onclick="startNewGame()" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-500/20 transition active:scale-95">
-            🔄 新規対戦開始
-          </button>
-        </div>
+    <div class="turn-box">
+      <div class="turn-num">ターン <span id="turnNum">1</span> / 12</div>
+      <div class="phase-label" id="phaseLabel">召喚フェイズ</div>
+    </div>
+    <div class="life-box">
+      <div class="life-header">
+        <span>CPU（<span id="cpuNameDisp">標準</span>）</span>
+        <span>ライフ: <span id="cpuLife">20</span> / 20（山札 <span id="cpuDeck">30</span> / 手札 <span id="cpuHand">6</span>）</span>
       </div>
-
-      <!-- フィールド＆サイドログのレイアウト -->
-      <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3">
-
-        <!-- 左〜中央：メインゲームボード (9カラム) -->
-        <div class="lg:col-span-9 flex flex-col justify-between bg-slate-900/75 border border-slate-800 rounded-2xl p-2.5 sm:p-4 relative shadow-xl">
-
-          <!-- CPUステータス＆手札表示エリア -->
-          <div class="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-slate-800/80">
-            <div class="flex items-center gap-3">
-              <div id="cpu-life-box" class="flex items-center gap-2 bg-rose-950/60 border border-rose-500/40 px-3 py-1.5 rounded-xl">
-                <span class="text-xs font-bold text-rose-300">CPU LIFE</span>
-                <span id="cpu-life" class="text-xl sm:text-2xl font-black text-rose-400">20</span>
-              </div>
-              <div class="flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700/60">
-                <span>🃏 山札: <strong id="cpu-deck-count" class="text-white">15</strong></span>
-                <span class="text-slate-600">|</span>
-                <span>🗑️ 捨札: <strong id="cpu-grave-count" class="text-slate-400">0</strong></span>
-              </div>
-            </div>
-
-            <!-- CPU手札（裏面表示） -->
-            <div class="flex items-center gap-1.5">
-              <span class="text-xs text-slate-400 mr-1">CPU手札 (<span id="cpu-hand-count">5</span>):</span>
-              <div id="cpu-hand-cards" class="flex -space-x-2"></div>
-            </div>
-          </div>
-
-          <!-- CPUフィールド（最大5体） -->
-          <div class="my-2">
-            <div class="text-[11px] font-bold text-rose-400/80 mb-1 flex items-center justify-between">
-              <span>CPU フィールド (<span id="cpu-board-count">0</span>/5)</span>
-              <span id="cpu-intent-badge" class="text-xs text-amber-300 font-semibold"></span>
-            </div>
-            <div id="cpu-board" class="min-h-[146px] sm:min-h-[168px] bg-slate-950/60 border border-slate-800/90 rounded-xl p-2 grid grid-cols-5 gap-1.5 sm:gap-2.5 items-center">
-              <!-- CPUモンスターカードがここに描画される -->
-            </div>
-          </div>
-
-          <!-- 中央フェイズバナー＆アクションコントロール -->
-          <div id="phase-control-bar" class="my-1.5 bg-gradient-to-r from-slate-800 via-slate-800/95 to-slate-800 border border-slate-700 rounded-xl p-2.5 sm:px-4 flex flex-col sm:flex-row items-center justify-between gap-2.5 shadow-inner">
-            <div class="flex items-center gap-2.5 text-center sm:text-left">
-              <span id="phase-badge" class="px-2.5 py-1 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-300 font-extrabold text-xs whitespace-nowrap">
-                召喚フェイズ
-              </span>
-              <p id="phase-instruction" class="text-xs sm:text-sm font-medium text-slate-200">
-                手札のカードをクリックして召喚するか、攻撃フェイズへ進んでください。
-              </p>
-            </div>
-
-            <!-- 動的アクションボタン群 -->
-            <div id="phase-actions" class="flex flex-wrap items-center justify-center gap-2 shrink-0">
-              <!-- JSで状況に応じたボタンを生成 -->
-            </div>
-          </div>
-
-          <!-- 戦闘プレビュー＆ブロッカー割り振り補助パネル（防御・攻撃時のみ表示） -->
-          <div id="combat-preview-panel" class="hidden my-1.5 bg-indigo-950/50 border border-indigo-500/40 rounded-xl p-2.5 text-xs">
-            <div class="flex items-center justify-between mb-1.5">
-              <span class="font-bold text-indigo-300 flex items-center gap-1">⚔️ 戦闘結果シミュレーション（リアルタイム予測）</span>
-              <span id="combat-direct-damage-summary" class="font-bold text-rose-400"></span>
-            </div>
-            <div id="combat-preview-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
-              <!-- 各攻撃ユニットごとの予測結果 -->
-            </div>
-          </div>
-
-          <!-- プレイヤーフィールド（最大5体） -->
-          <div class="my-2">
-            <div class="text-[11px] font-bold text-sky-400/80 mb-1 flex items-center justify-between">
-              <span>あなた フィールド (<span id="player-board-count">0</span>/5)</span>
-              <span class="text-[11px] text-slate-400">※召喚したターンは攻撃不可・ブロックは可能</span>
-            </div>
-            <div id="player-board" class="min-h-[146px] sm:min-h-[168px] bg-slate-950/60 border border-slate-800/90 rounded-xl p-2 grid grid-cols-5 gap-1.5 sm:gap-2.5 items-center">
-              <!-- プレイヤーモンスターカードがここに描画される -->
-            </div>
-          </div>
-
-          <!-- プレイヤーステータス＆手札エリア -->
-          <div class="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div class="flex items-center gap-3">
-                <div id="player-life-box" class="flex items-center gap-2 bg-sky-950/70 border border-sky-500/40 px-3 py-1.5 rounded-xl">
-                  <span class="text-xs font-bold text-sky-300">YOUR LIFE</span>
-                  <span id="player-life" class="text-xl sm:text-2xl font-black text-sky-400">20</span>
-                </div>
-                <div class="flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 px-2.5 py-1.5 rounded-xl border border-slate-700/60">
-                  <span>🃏 山札: <strong id="player-deck-count" class="text-white">15</strong></span>
-                  <span class="text-slate-600">|</span>
-                  <span>🗑️ 捨札: <strong id="player-grave-count" class="text-slate-400">0</strong></span>
-                </div>
-              </div>
-
-              <!-- 召喚コスト支払いインジケーター（召喚選択中のみ表示） -->
-              <div id="summon-cost-bar" class="hidden flex items-center gap-2 bg-amber-950/70 border border-amber-500/50 px-3 py-1.5 rounded-xl text-xs">
-                <span class="text-amber-300 font-bold">
-                  召喚対象: <strong id="summon-target-name" class="text-white"></strong>
-                </span>
-                <span class="text-slate-300">
-                  必要コスト: <strong id="summon-req-cost" class="text-amber-400 text-sm">0</strong>
-                </span>
-                <span class="text-slate-300">
-                  選択E合計: <strong id="summon-cur-energy" class="text-emerald-400 text-sm">0</strong>
-                </span>
-                <button id="btn-confirm-summon" onclick="confirmSummon()" disabled class="px-2.5 py-1 rounded-lg bg-emerald-600 disabled:bg-slate-700 disabled:text-slate-500 text-white font-bold transition">
-                  召喚実行
-                </button>
-                <button onclick="cancelSummon()" class="px-2 py-1 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold">
-                  取消
-                </button>
-              </div>
-            </div>
-
-            <!-- プレイヤー手札 -->
-            <div>
-              <div class="text-[11px] font-bold text-slate-400 mb-1 flex justify-between">
-                <span>あなたの手札 (<span id="player-hand-count">5</span>枚) — ターン開始時に5枚になるまでドロー</span>
-                <span class="text-amber-400/90">⚡E: 他のカードを召喚する時のコスト値</span>
-              </div>
-              <div id="player-hand" class="min-h-[156px] bg-slate-950/50 border border-slate-800/80 rounded-xl p-2 flex flex-wrap sm:flex-nowrap justify-center gap-2 overflow-x-auto">
-                <!-- 手札カードがここに描画される -->
-              </div>
-            </div>
-          </div>
-
-          <!-- 勝敗結果オーバーレイ -->
-          <div id="game-over-overlay" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-sm rounded-2xl z-30 flex flex-col items-center justify-center p-6 text-center">
-            <div id="game-over-icon" class="text-5xl mb-3">🏆</div>
-            <h2 id="game-over-title" class="text-3xl sm:text-4xl font-black mb-2 tracking-tight">VICTORY!</h2>
-            <p id="game-over-reason" class="text-slate-300 text-sm sm:text-base max-w-md mb-6">相手のライフを0にしました！</p>
-            <div class="flex gap-4 mb-6 text-sm bg-slate-900 border border-slate-700 px-5 py-3 rounded-2xl">
-              <div>あなた LIFE: <strong id="final-player-life" class="text-sky-400 text-lg">0</strong></div>
-              <div class="text-slate-600">|</div>
-              <div>CPU LIFE: <strong id="final-cpu-life" class="text-rose-400 text-lg">0</strong></div>
-              <div class="text-slate-600">|</div>
-              <div>経過ターン: <strong id="final-turn" class="text-amber-400 text-lg">0</strong></div>
-            </div>
-            <button onclick="startNewGame()" class="px-6 py-3 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-extrabold text-base shadow-lg shadow-sky-500/30 transition transform hover:scale-105">
-              もう一度対戦する
-            </button>
-          </div>
-        </div>
-
-        <!-- 右側：バトルログ＆クイックリファレンス (3カラム) -->
-        <div class="lg:col-span-3 flex flex-col gap-3">
-          <div class="flex-1 bg-slate-900/90 border border-slate-800 rounded-2xl p-3 flex flex-col min-h-[240px] max-h-[540px] lg:max-h-none shadow-lg">
-            <div class="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
-              <h3 class="text-xs font-extrabold text-slate-300 flex items-center gap-1.5">
-                <span>📜</span> バトルログ
-              </h3>
-              <span class="text-[10px] text-slate-500">最新が上</span>
-            </div>
-            <div id="battle-log" class="flex-1 overflow-y-auto space-y-1.5 text-xs pr-1">
-              <!-- ログメッセージ -->
-            </div>
-          </div>
-
-          <!-- クイックルールカード -->
-          <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 text-xs space-y-1.5 text-slate-300 shadow-lg">
-            <div class="font-extrabold text-amber-400 flex items-center gap-1">💡 重要ルールメモ</div>
-            <ul class="space-y-1 text-[11px] leading-relaxed text-slate-400 list-disc pl-4">
-              <li><strong class="text-slate-200">召喚コスト:</strong> 手札から他のカードを捨て、その<span class="text-emerald-400 font-bold">E合計 ≧ コスト</span>にする（余剰Eは消滅）。</li>
-              <li><strong class="text-slate-200">破壊ペナルティ:</strong> モンスターが破壊されるたび、その持ち主は<span class="text-rose-400 font-bold">ライフを1失う</span>！</li>
-              <li><strong class="text-slate-200">攻撃済(タップ):</strong> 攻撃したモンスターは次ターンの相手攻撃をブロック不可。</li>
-              <li><strong class="text-slate-200">12ターン制限:</strong> 12ターン終了時に決着がつかない場合、残りライフが多い方が勝利。</li>
-            </ul>
-          </div>
-        </div>
-
-      </div>
-    </section>
-
-    <!-- ========================================== -->
-    <!-- TAB 2: カードデータ＆デッキ編集画面           -->
-    <!-- ========================================== -->
-    <section id="view-editor" class="hidden flex-1 flex flex-col gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-        <div>
-          <h2 class="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
-            <span>📊</span> カードパラメータ＆デッキ構成エディタ
-          </h2>
-          <p class="text-xs text-slate-400 mt-0.5">
-            仕様書に基づく10種＋拡張3種のステータスと、各デッキ（計20枚）の枚数配分をリアルタイムに編集・保存できます。
-          </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button onclick="saveCustomData()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs sm:text-sm font-bold shadow transition">
-            💾 設定を保存して反映
-          </button>
-          <button onclick="resetDefaultData()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs sm:text-sm font-bold transition">
-            ↩️ 初期仕様に戻す
-          </button>
-        </div>
-      </div>
-
-      <!-- デッキ検証ステータスバー -->
-      <div id="deck-validation-summary" class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        <!-- JSで各デッキの合計枚数・平均コスト・平均Eを表示 -->
-      </div>
-
-      <!-- カード一覧編集テーブル -->
-      <div class="overflow-x-auto border border-slate-800 rounded-xl">
-        <table class="w-full text-left border-collapse text-xs sm:text-sm">
-          <thead>
-            <tr class="bg-slate-950 text-slate-300 border-b border-slate-800">
-              <th class="p-2.5 font-bold">カード名</th>
-              <th class="p-2.5 font-bold">画像パス (./images/)</th>
-              <th class="p-2.5 font-bold">区分</th>
-              <th class="p-2.5 font-bold text-amber-400 text-center">コスト</th>
-              <th class="p-2.5 font-bold text-emerald-400 text-center">E (供給)</th>
-              <th class="p-2.5 font-bold text-rose-400 text-center">攻撃 (ATK)</th>
-              <th class="p-2.5 font-bold text-sky-400 text-center">体力 (HP)</th>
-              <th class="p-2.5 font-bold text-center">標準</th>
-              <th class="p-2.5 font-bold text-center">速攻</th>
-              <th class="p-2.5 font-bold text-center">堅守</th>
-              <th class="p-2.5 font-bold text-center">重量</th>
-              <th class="p-2.5 font-bold">特性・メモ</th>
-            </tr>
-          </thead>
-          <tbody id="editor-table-body" class="divide-y divide-slate-800/80 bg-slate-900/50">
-            <!-- JSで動的生成 -->
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- ========================================== -->
-    <!-- TAB 3: バランス検証AIシミュレーター           -->
-    <!-- ========================================== -->
-    <section id="view-sim" class="hidden flex-1 flex flex-col gap-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 sm:p-6 shadow-xl">
-      <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
-        <div>
-          <h2 class="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2">
-            <span>🤖</span> 自動対戦AI バランス検証シミュレーター
-          </h2>
-          <p class="text-xs text-slate-400 mt-0.5">
-            現在のカード・デッキ設定を使用し、AI同士で数千回の高速シミュレーションを実行して勝率バランス（目標45%〜55%）を検証します。
-          </p>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-2">
-          <select id="sim-games-count" class="bg-slate-800 border border-slate-700 text-white text-xs sm:text-sm font-bold rounded-xl px-3 py-2">
-            <option value="200">各組合せ 200戦 (計3,200戦)</option>
-            <option value="500" selected>各組合せ 500戦 (計8,000戦)</option>
-            <option value="1000">各組合せ 1000戦 (計16,000戦)</option>
-          </select>
-          <button id="btn-run-sim" onclick="runBalanceSimulation()" class="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-extrabold text-xs sm:text-sm shadow-lg shadow-indigo-500/25 transition">
-            ⚡ シミュレーション実行
-          </button>
-        </div>
-      </div>
-
-      <!-- シミュレーション結果サマリー -->
-      <div id="sim-results-container" class="space-y-4">
-        <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-8 text-center text-slate-400 text-sm">
-          「シミュレーション実行」ボタンを押すと、4つのデッキタイプ（標準・速攻・堅守・重量）の総当たり戦績とバランス判定が表示されます。
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <!-- トースト通知（alert()の代替） -->
-  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-  <!-- ルール説明モーダル -->
-  <div id="rules-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl">
-      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
-        <h3 class="text-lg font-extrabold text-white">📖 E-CARD TACTICS ゲームルール</h3>
-        <button onclick="toggleRulesModal(false)" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
-      </div>
-      <div class="p-5 overflow-y-auto space-y-4 text-xs sm:text-sm text-slate-300 leading-relaxed">
-        <div>
-          <h4 class="font-bold text-sky-400 text-base mb-1">1. 勝利条件と基本設定</h4>
-          <ul class="list-disc pl-5 space-y-1">
-            <li>お互いの初期ライフは <strong>20</strong>、山札は <strong>20枚</strong> です。</li>
-            <li>相手のライフを <strong>0以下</strong> にすると勝利です（同時0は引き分け）。</li>
-            <li>最大 <strong>12ターン</strong> で終了し、決着がつかない場合は残りライフが多い方が勝利します。</li>
-            <li>山札が0枚になっても敗北はせず、それ以上ドローできなくなるだけです。</li>
-          </ul>
-        </div>
-        <div>
-          <h4 class="font-bold text-emerald-400 text-base mb-1">2. ターンの流れ</h4>
-          <ol class="list-decimal pl-5 space-y-1">
-            <li><strong>ドロー:</strong> 手札が <strong>5枚</strong> になるまで山札から引きます。（※後攻1ターン目のみ手札上限が6枚になり、6枚まで引きます）</li>
-            <li><strong>召喚フェイズ:</strong> 手札からモンスターを場（最大5体）に出します。コスト0ならそのまま召喚。コスト1以上の場合は、<strong>手札の他のカードを捨て、その「E（エネルギー）」の合計がコスト以上</strong>になるように支払います（余ったEは消滅）。</li>
-            <li><strong>攻撃宣言フェイズ:</strong> 前のターン以前から場にいるモンスターを選んで一斉に攻撃宣言します。攻撃したモンスターは「攻撃済」状態になります。</li>
-            <li><strong>ブロック割り振り:</strong> 防御側は「攻撃済」でないモンスターを、攻撃モンスター1体につき1体までブロックに割り振れます。</li>
-            <li><strong>戦闘解決:</strong> ブロックされなかった攻撃は相手プレイヤーにATK分の直接ダメージ。ブロックされた戦闘はお互いのHPにATK分のダメージを与え合い（ダメージはターンをまたいで蓄積）、<strong>HPが0以下になったモンスターは破壊され、その持ち主はライフを1失います。</strong></li>
-          </ol>
-        </div>
-      </div>
-      <div class="p-4 border-t border-slate-800 text-right">
-        <button onclick="toggleRulesModal(false)" class="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-sm">閉じる</button>
-      </div>
+      <div class="life-bar-bg"><div id="cpuLifeBar" class="life-bar-fill life-cpu" style="width:100%"></div></div>
     </div>
   </div>
 
-  <script>
-    // =========================================================================
-    // 1. 初期マスターデータ定義（カードゲーム仕様.xlsx ＋ 相対画像パス対応）
-    // =========================================================================
-    // ※GitHub Pages等での運用を想定し、./images/{id}.png を相対参照します。
-    //   画像ファイルが未配置の場合でもレイアウトが崩れないブランク枠にフォールバックします。
-    const DEFAULT_CARDS = [
-      { id: 'hiyoko',  name: 'ヒヨコ',   img: './images/hiyoko.png',   emoji: '🐤', type: 'シンプル', cost: 0, energy: 3, atk: 1, hp: 1, ability: 'none',       desc: 'コスト0のE供給源',           decks: { '標準': 3, '速攻': 2, '堅守': 3, '重量': 3 } },
-      { id: 'kobold',  name: 'コボルド', img: './images/kobold.png',   emoji: '🐺', type: 'シンプル', cost: 1, energy: 2, atk: 1, hp: 2, ability: 'none',       desc: '序盤の壁＆E供給',            decks: { '標準': 2, '速攻': 1, '堅守': 3, '重量': 2 } },
-      { id: 'nezumi',  name: 'ネズミ',   img: './images/nezumi.png',   emoji: '🐀', type: 'シンプル', cost: 1, energy: 2, atk: 2, hp: 1, ability: 'none',       desc: '低コスト攻撃要員',           decks: { '標準': 2, '速攻': 3, '堅守': 3, '重量': 1 } },
-      { id: 'goblin',  name: 'ゴブリン', img: './images/goblin.png',   emoji: '👺', type: 'シンプル', cost: 2, energy: 2, atk: 2, hp: 2, ability: 'none',       desc: 'バランスの良い主力',         decks: { '標準': 3, '速攻': 4, '堅守': 3, '重量': 3 } },
-      { id: 'orc',     name: 'オーク',   img: './images/orc.png',      emoji: '👹', type: 'シンプル', cost: 2, energy: 1, atk: 3, hp: 3, ability: 'none',       desc: 'コスト2で3/3の優秀な戦力',   decks: { '標準': 2, '速攻': 3, '堅守': 2, '重量': 2 } },
-      { id: 'kame',    name: '亀',       img: './images/kame.png',     emoji: '🐢', type: 'シンプル', cost: 2, energy: 1, atk: 2, hp: 3, ability: 'none',       desc: '高いHPを持つ守り役',         decks: { '標準': 2, '速攻': 0, '堅守': 3, '重量': 1 } },
-      { id: 'kenshi',  name: '剣士',     img: './images/kenshi.png',   emoji: '⚔️', type: 'シンプル', cost: 3, energy: 1, atk: 4, hp: 2, ability: 'none',       desc: '高い攻撃力で相手を突破',     decks: { '標準': 2, '速攻': 3, '堅守': 0, '重量': 2 } },
-      { id: 'kishi',   name: '騎士',     img: './images/kishi.png',    emoji: '🛡️', type: 'シンプル', cost: 3, energy: 1, atk: 3, hp: 4, ability: 'none',       desc: '攻守に優れた中核ユニット',   decks: { '標準': 2, '速攻': 3, '堅守': 2, '重量': 2 } },
-      { id: 'ryu',     name: '竜',       img: './images/ryu.png',      emoji: '🐉', type: 'シンプル', cost: 5, energy: 0, atk: 5, hp: 4, ability: 'none',       desc: '圧倒的攻撃力の切り札',       decks: { '標準': 1, '速攻': 1, '堅守': 0, '重量': 2 } },
-      { id: 'kyojin',  name: '巨人',     img: './images/kyojin.png',   emoji: '🗿', type: 'シンプル', cost: 4, energy: 0, atk: 3, hp: 6, ability: 'none',       desc: '鉄壁のHP6を誇る巨兵',        decks: { '標準': 1, '速攻': 0, '堅守': 1, '重量': 2 } },
-      // 拡張カード候補（仕様書に記載の実験用3種）
-      { id: 'assassin',name: '影狼',     img: './images/assassin.png', emoji: '🥷', type: '拡張',     cost: 2, energy: 1, atk: 2, hp: 1, ability: 'unblockable',desc: '【拡張】ブロックされない',   decks: { '標準': 0, '速攻': 0, '堅守': 0, '重量': 0 } },
-      { id: 'wall',    name: '石像兵',   img: './images/wall.png',     emoji: '🏰', type: '拡張',     cost: 2, energy: 1, atk: 0, hp: 5, ability: 'cant_attack',desc: '【拡張】攻撃できない鉄壁',   decks: { '標準': 0, '速攻': 0, '堅守': 0, '重量': 0 } },
-      { id: 'crystal', name: '魔力石',   img: './images/crystal.png',  emoji: '💎', type: '拡張',     cost: 0, energy: 4, atk: 0, hp: 1, ability: 'energy_only',desc: '【拡張】E4供給専用（召喚不可）', decks: { '標準': 0, '速攻': 0, '堅守': 0, '重量': 0 } }
-    ];
+  <!-- 直近3件ログ -->
+  <div class="log-box" id="logBox">
+    <div class="log-item">「新規対戦スタート」でゲームを開始します。</div>
+  </div>
 
-    const DECK_TYPES = ['標準', '速攻', '堅守', '重量'];
+  <!-- ブロック割り振り専用パネル -->
+  <div id="blockPanel" class="block-panel hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+      <strong>相手の攻撃宣言！ブロックを割り振ってください</strong>
+      <div style="display:flex; gap:6px;">
+        <button onclick="autoAssignBlocks()">おまかせ割り振り</button>
+        <button onclick="clearBlocks()">すべて解除</button>
+        <button class="danger" onclick="confirmBlocks()">この内容で防御確定</button>
+      </div>
+    </div>
+    <div id="blockRows"></div>
+  </div>
 
-    // ブロックペアの色分け用スタイル定義
-    const PAIR_COLORS = [
-      { label: 'A', border: 'border-amber-400',   bg: 'bg-amber-950/50',   badge: 'bg-amber-400 text-slate-950' },
-      { label: 'B', border: 'border-cyan-400',    bg: 'bg-cyan-950/50',    badge: 'bg-cyan-400 text-slate-950' },
-      { label: 'C', border: 'border-fuchsia-400', bg: 'bg-fuchsia-950/50', badge: 'bg-fuchsia-400 text-slate-950' },
-      { label: 'D', border: 'border-emerald-400', bg: 'bg-emerald-950/50', badge: 'bg-emerald-400 text-slate-950' },
-      { label: 'E', border: 'border-orange-400',  bg: 'bg-orange-950/50',  badge: 'bg-orange-400 text-slate-950' }
-    ];
+  <!-- CPU盤面 -->
+  <div class="board-section">
+    <div class="section-title">
+      <span>相手の場（最大5体）</span>
+      <span id="snipeHint" style="color:var(--danger); font-weight:bold;"></span>
+    </div>
+    <div class="slots" id="cpuBoard"></div>
+  </div>
 
-    // =========================================================================
-    // 2. グローバル状態管理
-    // =========================================================================
-    let cardDatabase = loadCardDatabase();
-    let uidCounter = 1;
+  <!-- あなた盤面 -->
+  <div class="board-section">
+    <div class="section-title">
+      <span>あなたの場（最大5体）</span>
+      <span style="font-size:0.78rem;">※出したターンは攻撃不可・ブロック可 / 攻撃済は次ターンまでブロック不可</span>
+    </div>
+    <div class="slots" id="youBoard"></div>
+  </div>
 
-    let game = {
-      turn: 1,
-      phase: 'PLAYER_SUMMON', // PLAYER_SUMMON, PLAYER_ATTACK, CPU_TURN, PLAYER_BLOCK, GAME_OVER
-      player: null,
-      cpu: null,
-      summonTargetUid: null,
-      costSelectedUids: [],
-      attackingUids: [],
-      blockAssignments: {}, // { attackerUid: blockerUid }
-      selectedAttackerForBlock: null,
-      logs: [],
-      useExpansion: false
-    };
+  <!-- アクション操作バー -->
+  <div class="action-bar">
+    <div class="info-text" id="actionGuide">召喚する手札を選んでください。</div>
+    <button id="btnSummon" class="success" onclick="executeSummon()" disabled>召喚する</button>
+    <button id="btnSwap" onclick="executeSwap()" disabled>1枚交換（残1回）</button>
+    <button id="btnToAttack" class="primary" onclick="goToAttackPhase()">攻撃フェイズへ</button>
+    <button id="btnExecAttack" class="danger hidden" onclick="executePlayerAttack()">選択した体で攻撃確定</button>
+    <button id="btnEndTurn" class="hidden" onclick="endPlayerTurn()">攻撃せずターン終了</button>
+  </div>
 
-    function loadCardDatabase() {
-      try {
-        const saved = localStorage.getItem('ecard_custom_db');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-        }
-      } catch (e) {
-        console.warn('カスタムデータの読み込みに失敗しました:', e);
-      }
-      return JSON.parse(JSON.stringify(DEFAULT_CARDS));
-    }
+  <!-- あなた手札 -->
+  <div class="board-section">
+    <div class="section-title">
+      <span>あなたの手札（最大5枚補充）</span>
+      <span id="payCalcInfo" style="color:var(--warn); font-weight:bold;"></span>
+    </div>
+    <div class="hand-slots" id="youHand"></div>
+  </div>
 
-    // =========================================================================
-    // 3. ユーティリティ＆通知
-    // =========================================================================
-    function showToast(message, type = 'info') {
-      const container = document.getElementById('toast-container');
-      const el = document.createElement('div');
-      const colors = {
-        info: 'bg-slate-800 border-sky-500 text-sky-100',
-        success: 'bg-emerald-950 border-emerald-500 text-emerald-100',
-        warn: 'bg-amber-950 border-amber-500 text-amber-100',
-        error: 'bg-rose-950 border-rose-500 text-rose-100'
-      };
-      el.className = `px-4 py-2.5 rounded-xl border shadow-xl text-xs sm:text-sm font-bold transition-all transform translate-y-2 opacity-0 ${colors[type] || colors.info}`;
-      el.textContent = message;
-      container.appendChild(el);
+  <!-- 下部ツール（カード表編集 / CSV入出力 / AI自動対戦） -->
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('tabCsv', this)">CSV読み込み・書き出し</button>
+    <button class="tab-btn" onclick="switchTab('tabTable', this)">カード表・デッキ編集</button>
+    <button class="tab-btn" onclick="switchTab('tabSim', this)">AI自動対戦テスト（各1000戦）</button>
+  </div>
 
-      requestAnimationFrame(() => {
-        el.classList.remove('translate-y-2', 'opacity-0');
-      });
+  <!-- タブ1: CSV入出力 -->
+  <div id="tabCsv" class="drawer">
+    <div style="margin-bottom:8px; font-size:0.85rem; color:var(--muted);">
+      Excelやテキストエディタで編集したCSVを貼り付けるか、<code>.csv</code> ファイルを選択して「CSVをゲームに反映」を押すと即座に適用・自動保存されます。
+    </div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:8px; align-items:center;">
+      <input type="file" id="csvFileInput" accept=".csv,text/csv" onchange="loadCsvFile(event)">
+      <button class="primary" onclick="applyCsvText()">CSVをゲームに反映（自動保存）</button>
+      <button onclick="refreshCsvTextarea()">現在の設定をCSVテキストに表示</button>
+      <button class="success" onclick="downloadCsvFile()">cards.csv をダウンロード</button>
+      <button class="danger" onclick="resetToDefault()">初期データに戻す</button>
+    </div>
+    <textarea id="csvTextarea" class="csv-area" spellcheck="false"></textarea>
+    <div id="csvMsg" style="margin-top:6px; font-size:0.85rem; color:var(--success);"></div>
+  </div>
 
-      setTimeout(() => {
-        el.classList.add('opacity-0', 'translate-y-2');
-        setTimeout(() => el.remove(), 300);
-      }, 2800);
-    }
+  <!-- タブ2: テーブル編集 -->
+  <div id="tabTable" class="drawer hidden">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+      <span style="font-size:0.85rem; color:var(--muted);">数値を直接書き換えて「変更を反映・保存」を押すとCSVとも同期されます。</span>
+      <button class="primary" onclick="applyTableEdits()">変更を反映・保存</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table id="cardEditTable"></table>
+    </div>
+  </div>
 
-    function addLog(message, category = 'system') {
-      game.logs.unshift({ message, category, id: Date.now() + Math.random() });
-      if (game.logs.length > 80) game.logs.pop();
-      renderLogs();
-    }
+  <!-- タブ3: AI自動対戦 -->
+  <div id="tabSim" class="drawer hidden">
+    <div style="display:flex; gap:10px; align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+      <button class="primary" onclick="runAutoSim(1000)">現在の設定で全CPU 1000戦ずつ自動対戦</button>
+      <span style="font-size:0.85rem; color:var(--muted);">※現在選択中の「ルール（シンプル/拡張）」および編集済みカード表・デッキで検証します。</span>
+    </div>
+    <div id="simResultArea" style="font-size:0.9rem;">ボタンを押すとシミュレーションを実行します。</div>
+  </div>
+</div>
 
-    function shuffle(array) {
-      const arr = [...array];
-      for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-      }
-      return arr;
-    }
+<script>
+// 初期カード定義（最新仕様Excel準拠）
+const DEFAULT_CARDS = [
+  { id:'hiyoko',     name:'ヒヨコ', cost:0, e:3, atk:1, hp:1, ability:'',       s_you:5, s_aggro:4, s_def:5, s_heavy:7, e_you:4, e_aggro:4, e_def:6, e_heavy:5 },
+  { id:'kobold',     name:'コボルド', cost:1, e:2, atk:1, hp:2, ability:'',     s_you:3, s_aggro:3, s_def:5, s_heavy:4, e_you:2, e_aggro:2, e_def:4, e_heavy:2 },
+  { id:'nezumi',     name:'ネズミ', cost:1, e:2, atk:2, hp:1, ability:'',       s_you:3, s_aggro:5, s_def:4, s_heavy:1, e_you:2, e_aggro:2, e_def:3, e_heavy:0 },
+  { id:'goblin',     name:'ゴブリン', cost:2, e:2, atk:2, hp:2, ability:'',     s_you:5, s_aggro:4, s_def:6, s_heavy:4, e_you:3, e_aggro:5, e_def:5, e_heavy:3 },
+  { id:'orc',        name:'オーク', cost:2, e:1, atk:3, hp:3, ability:'',       s_you:3, s_aggro:5, s_def:3, s_heavy:3, e_you:3, e_aggro:5, e_def:3, e_heavy:2 },
+  { id:'turtle',     name:'亀',     cost:2, e:1, atk:1, hp:5, ability:'',       s_you:3, s_aggro:0, s_def:3, s_heavy:0, e_you:3, e_aggro:0, e_def:3, e_heavy:2 },
+  { id:'kenshi',     name:'剣士',   cost:3, e:1, atk:4, hp:2, ability:'',       s_you:3, s_aggro:3, s_def:0, s_heavy:3, e_you:3, e_aggro:4, e_def:0, e_heavy:4 },
+  { id:'kishi',      name:'騎士',   cost:3, e:1, atk:3, hp:4, ability:'',       s_you:3, s_aggro:6, s_def:2, s_heavy:2, e_you:3, e_aggro:5, e_def:3, e_heavy:4 },
+  { id:'ryu',        name:'竜',     cost:5, e:0, atk:5, hp:4, ability:'',       s_you:1, s_aggro:0, s_def:0, s_heavy:3, e_you:2, e_aggro:1, e_def:0, e_heavy:3 },
+  { id:'kyojin',     name:'巨人',   cost:4, e:0, atk:3, hp:6, ability:'',       s_you:1, s_aggro:0, s_def:2, s_heavy:3, e_you:1, e_aggro:0, e_def:0, e_heavy:1 },
+  { id:'ansatsusha', name:'暗殺者', cost:2, e:1, atk:2, hp:1, ability:'evade',  s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:2, e_aggro:2, e_def:0, e_heavy:1 },
+  { id:'sogekishu',  name:'狙撃手', cost:2, e:1, atk:1, hp:2, ability:'snipe',  s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:1, e_aggro:0, e_def:2, e_heavy:3 },
+  { id:'hokyuhei',   name:'補給兵', cost:2, e:1, atk:1, hp:2, ability:'supply', s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:1, e_aggro:0, e_def:1, e_heavy:0 }
+];
 
-    function buildDeck(deckType, useExpansion) {
-      const deckList = [];
-      cardDatabase.forEach(card => {
-        if (!useExpansion && card.type === '拡張') return;
-        const count = card.decks[deckType] || 0;
-        for (let i = 0; i < count; i++) {
-          deckList.push({
-            ...card,
-            uid: `c_${uidCounter++}`,
-            curHp: card.hp,
-            maxHp: card.hp,
-            sick: false,
-            tapped: false
-          });
-        }
-      });
+const EMOJI_MAP = {
+  hiyoko:'🐤', kobold:'👺', nezumi:'🐀', goblin:'🧌', orc:'👹',
+  turtle:'🐢', kenshi:'⚔️', kishi:'🛡️', ryu:'🐉', kyojin:'🗿',
+  ansatsusha:'🗡️', sogekishu:'🏹', hokyuhei:'🎒'
+};
 
-      // 拡張有効時で拡張カード枚数が0の場合はランダムに2枚入れ替えて体験できるようにする
-      if (useExpansion) {
-        const expCards = cardDatabase.filter(c => c.type === '拡張');
-        const hasExp = deckList.some(c => c.type === '拡張');
-        if (!hasExp && expCards.length > 0 && deckList.length >= 2) {
-          for (let i = 0; i < 2; i++) {
-            const rndExp = expCards[Math.floor(Math.random() * expCards.length)];
-            deckList[i] = {
-              ...rndExp,
-              uid: `c_${uidCounter++}`,
-              curHp: rndExp.hp,
-              maxHp: rndExp.hp,
-              sick: false,
-              tapped: false
-            };
-          }
-        }
-      }
+const ABILITY_LABEL = {
+  '': '',
+  'evade': '回避:ブロック不可',
+  'snipe': '狙撃:登場時2ダメ',
+  'supply': '補給:登場時1ドロー'
+};
 
-      // 万が一編集で20枚未満になった場合の安全補填
-      while (deckList.length < 20) {
-        const fallback = cardDatabase[0];
-        deckList.push({
-          ...fallback,
-          uid: `c_${uidCounter++}`,
-          curHp: fallback.hp,
-          maxHp: fallback.hp,
-          sick: false,
-          tapped: false
-        });
-      }
+const CPU_META = {
+  standard: { label:'標準', minAtk:2, desperate:'defend' },
+  aggro:    { label:'速攻', minAtk:1, desperate:'attack' },
+  defense:  { label:'堅守', minAtk:3, desperate:'defend' },
+  heavy:    { label:'重量', minAtk:2, desperate:'defend' }
+};
 
-      return shuffle(deckList).slice(0, 20);
-    }
+const STORAGE_KEY = 'monster_card_game_cards_v2';
+let cardMaster = [];
 
-    // =========================================================================
-    // 4. ゲーム開始＆ターン管理ロジック
-    // =========================================================================
-    function startNewGame() {
-      const playerDeckType = document.getElementById('select-player-deck').value;
-      const cpuDeckType = document.getElementById('select-cpu-deck').value;
-      const useExpansion = document.getElementById('toggle-expansion').checked;
+// ゲーム状態
+let G = null;
 
-      uidCounter = 1;
-      game = {
-        turn: 1,
-        phase: 'PLAYER_SUMMON',
-        useExpansion,
-        player: {
-          name: 'あなた',
-          deckType: playerDeckType,
-          life: 20,
-          deck: buildDeck(playerDeckType, useExpansion),
-          hand: [],
-          board: [],
-          grave: [],
-          firstTurnDone: false
-        },
-        cpu: {
-          name: 'CPU',
-          deckType: cpuDeckType,
-          life: 20,
-          deck: buildDeck(cpuDeckType, useExpansion),
-          hand: [],
-          board: [],
-          grave: [],
-          firstTurnDone: false
-        },
-        summonTargetUid: null,
-        costSelectedUids: [],
-        attackingUids: [],
-        blockAssignments: {},
-        selectedAttackerForBlock: null,
-        logs: []
-      };
-
-      document.getElementById('game-over-overlay').classList.add('hidden');
-      addLog(`対戦開始！ あなた[${playerDeckType}] vs CPU[${cpuDeckType}]`, 'system');
-      beginPlayerTurn();
-    }
-
-    function drawUpToLimit(sideObj, limit) {
-      let drawn = 0;
-      while (sideObj.hand.length < limit && sideObj.deck.length > 0) {
-        sideObj.hand.push(sideObj.deck.pop());
-        drawn++;
-      }
-      return drawn;
-    }
-
-    function beginPlayerTurn() {
-      if (checkGameOver()) return;
-
-      // 場の状態リセット（酔い解除＆攻撃済解除）
-      game.player.board.forEach(m => {
-        m.sick = false;
-        m.tapped = false;
-      });
-
-      const drawn = drawUpToLimit(game.player, 5);
-      game.player.firstTurnDone = true;
-      game.phase = 'PLAYER_SUMMON';
-      game.summonTargetUid = null;
-      game.costSelectedUids = [];
-      game.attackingUids = [];
-      game.blockAssignments = {};
-
-      addLog(`--- ターン ${game.turn}（あなたのターン） ---`, 'system');
-      if (drawn > 0) {
-        addLog(`あなたはカードを ${drawn} 枚ドローしました（手札 ${game.player.hand.length} 枚）。`, 'player');
-      }
-
-      renderAll();
-    }
-
-    // =========================================================================
-    // 5. プレイヤー操作：召喚フェイズ
-    // =========================================================================
-    function onPlayerHandClick(uid) {
-      if (game.phase !== 'PLAYER_SUMMON') {
-        showToast('現在は召喚フェイズではありません', 'warn');
+function initData() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        cardMaster = parsed;
+        document.getElementById('saveStatus').textContent = 'データ: 保存済みカスタム';
+        refreshCsvTextarea();
+        renderEditTable();
         return;
       }
-
-      const card = game.player.hand.find(c => c.uid === uid);
-      if (!card) return;
-
-      // まだ召喚対象を選んでいない場合 -> このカードを召喚対象にする
-      if (!game.summonTargetUid) {
-        if (card.ability === 'energy_only') {
-          showToast('このカードはE供給専用のため場に出せません', 'warn');
-          return;
-        }
-        if (game.player.board.length >= 5) {
-          showToast('フィールドは最大5体までです', 'warn');
-          return;
-        }
-
-        // コスト0なら即座に召喚可能か確認（そのまま召喚）
-        if (card.cost === 0) {
-          executePlayerSummon(card, []);
-          return;
-        }
-
-        // 手札の他カード全てのE合計が足りるかチェック
-        const maxPossibleE = game.player.hand
-          .filter(c => c.uid !== uid)
-          .reduce((sum, c) => sum + c.energy, 0);
-
-        if (maxPossibleE < card.cost) {
-          showToast(`エネルギー不足です（必要: ${card.cost} / 手札最大E: ${maxPossibleE}）`, 'error');
-          return;
-        }
-
-        game.summonTargetUid = uid;
-        game.costSelectedUids = [];
-        renderAll();
-        return;
-      }
-
-      // 既に召喚対象を選択中の場合
-      if (game.summonTargetUid === uid) {
-        // 同じカードをクリックしたら選択解除
-        cancelSummon();
-        return;
-      }
-
-      // コスト支払い用カードのトグル選択
-      const idx = game.costSelectedUids.indexOf(uid);
-      if (idx >= 0) {
-        game.costSelectedUids.splice(idx, 1);
-      } else {
-        game.costSelectedUids.push(uid);
-      }
-      renderAll();
-    }
-
-    function cancelSummon() {
-      game.summonTargetUid = null;
-      game.costSelectedUids = [];
-      renderAll();
-    }
-
-    function confirmSummon() {
-      if (!game.summonTargetUid) return;
-      const targetCard = game.player.hand.find(c => c.uid === game.summonTargetUid);
-      if (!targetCard) return;
-
-      const selectedCards = game.costSelectedUids
-        .map(uid => game.player.hand.find(c => c.uid === uid))
-        .filter(Boolean);
-
-      const totalE = selectedCards.reduce((sum, c) => sum + c.energy, 0);
-      if (totalE < targetCard.cost) {
-        showToast('選択したカードのE合計が不足しています', 'warn');
-        return;
-      }
-
-      executePlayerSummon(targetCard, game.costSelectedUids);
-    }
-
-    function executePlayerSummon(targetCard, costUids) {
-      // 手札からコストカードを捨て札へ移動
-      const discardedNames = [];
-      game.player.hand = game.player.hand.filter(c => {
-        if (c.uid === targetCard.uid) return false;
-        if (costUids.includes(c.uid)) {
-          discardedNames.push(`${c.name}(E${c.energy})`);
-          game.player.grave.push(c);
-          return false;
-        }
-        return true;
-      });
-
-      // 場に出す（召喚酔い状態）
-      targetCard.sick = true;
-      targetCard.tapped = false;
-      game.player.board.push(targetCard);
-
-      game.summonTargetUid = null;
-      game.costSelectedUids = [];
-
-      const costLog = discardedNames.length > 0 ? ` [コスト: ${discardedNames.join(', ')}]` : ' [コスト0]';
-      addLog(`あなたは「${targetCard.name}」(⚔️${targetCard.atk}/❤️${targetCard.hp}) を召喚！${costLog}`, 'player');
-      renderAll();
-    }
-
-    function goToPlayerAttackPhase() {
-      cancelSummon();
-      game.phase = 'PLAYER_ATTACK';
-      game.attackingUids = [];
-
-      const canAttackAny = game.player.board.some(m => canMonsterAttack(m));
-      if (!canAttackAny) {
-        addLog('攻撃可能なモンスターがいないため、攻撃フェイズをスキップします。', 'player');
-        endPlayerTurn();
-        return;
-      }
-
-      renderAll();
-    }
-
-    // =========================================================================
-    // 6. プレイヤー操作：攻撃宣言フェイズ
-    // =========================================================================
-    function canMonsterAttack(m) {
-      return !m.sick && !m.tapped && m.ability !== 'cant_attack' && m.atk > 0;
-    }
-
-    function onBoardCardClick(side, uid) {
-      // 1) プレイヤー攻撃フェイズ：自分のモンスターをクリックして攻撃参加を切替
-      if (game.phase === 'PLAYER_ATTACK' && side === 'player') {
-        const mon = game.player.board.find(m => m.uid === uid);
-        if (!mon) return;
-        if (!canMonsterAttack(mon)) {
-          showToast(mon.sick ? '召喚したターンは攻撃できません' : mon.tapped ? 'すでに攻撃済です' : 'このモンスターは攻撃できません', 'warn');
-          return;
-        }
-        const idx = game.attackingUids.indexOf(uid);
-        if (idx >= 0) {
-          game.attackingUids.splice(idx, 1);
-        } else {
-          game.attackingUids.push(uid);
-        }
-        renderAll();
-        return;
-      }
-
-      // 2) プレイヤー防御（ブロック割り振り）フェイズ
-      if (game.phase === 'PLAYER_BLOCK') {
-        if (side === 'cpu') {
-          // 攻撃中のCPUモンスターを選択
-          if (!game.attackingUids.includes(uid)) {
-            showToast('攻撃宣言されているCPUモンスターを選んでください', 'warn');
-            return;
-          }
-          const attacker = game.cpu.board.find(m => m.uid === uid);
-          if (attacker && attacker.ability === 'unblockable') {
-            showToast('このモンスターはブロックできません！', 'warn');
-            return;
-          }
-          // 既に選択中なら解除、そうでなければ選択
-          game.selectedAttackerForBlock = (game.selectedAttackerForBlock === uid) ? null : uid;
-          renderAll();
-          return;
-        }
-
-        if (side === 'player') {
-          const blocker = game.player.board.find(m => m.uid === uid);
-          if (!blocker) return;
-          if (blocker.tapped) {
-            showToast('「攻撃済」のモンスターはブロックできません', 'warn');
-            return;
-          }
-
-          // すでにどこかに割り当てられている場合は解除するか、選択中の攻撃対象へ付け替え
-          const existingAttackerUid = Object.keys(game.blockAssignments).find(k => game.blockAssignments[k] === uid);
-
-          if (!game.selectedAttackerForBlock) {
-            if (existingAttackerUid) {
-              delete game.blockAssignments[existingAttackerUid];
-              renderAll();
-            } else {
-              // ブロック可能な攻撃モンスターが1体だけなら自動選択して割り当て
-              const blockableAttackers = game.attackingUids.filter(aUid => {
-                const a = game.cpu.board.find(m => m.uid === aUid);
-                return a && a.ability !== 'unblockable';
-              });
-              if (blockableAttackers.length === 1) {
-                game.blockAssignments[blockableAttackers[0]] = uid;
-                renderAll();
-              } else {
-                showToast('先にブロックしたいCPUの攻撃モンスターをクリックしてください', 'info');
-              }
-            }
-            return;
-          }
-
-          // 選択中の攻撃モンスターに対して割り当て（同じペアなら解除）
-          if (game.blockAssignments[game.selectedAttackerForBlock] === uid) {
-            delete game.blockAssignments[game.selectedAttackerForBlock];
-          } else {
-            if (existingAttackerUid) {
-              delete game.blockAssignments[existingAttackerUid];
-            }
-            game.blockAssignments[game.selectedAttackerForBlock] = uid;
-          }
-          game.selectedAttackerForBlock = null;
-          renderAll();
-        }
-      }
-    }
-
-    function selectAllAttackers() {
-      if (game.phase !== 'PLAYER_ATTACK') return;
-      game.attackingUids = game.player.board.filter(m => canMonsterAttack(m)).map(m => m.uid);
-      renderAll();
-    }
-
-    function confirmPlayerAttack() {
-      if (game.phase !== 'PLAYER_ATTACK') return;
-
-      if (game.attackingUids.length === 0) {
-        addLog('あなたは攻撃を行わずにターンを終了しました。', 'player');
-        endPlayerTurn();
-        return;
-      }
-
-      // 攻撃モンスターをタップ状態にする
-      const attackerNames = [];
-      game.attackingUids.forEach(uid => {
-        const m = game.player.board.find(x => x.uid === uid);
-        if (m) {
-          m.tapped = true;
-          attackerNames.push(`${m.name}(⚔️${m.atk})`);
-        }
-      });
-
-      addLog(`あなたの総攻撃！ [${attackerNames.join(', ')}]`, 'player');
-
-      // CPUのブロック割り振りAIを実行
-      const cpuBlocks = computeSmartBlocks(game.player, game.cpu, game.attackingUids, game.cpu.deckType);
-      resolveCombat('player', 'cpu', game.attackingUids, cpuBlocks);
-
-      if (checkGameOver()) return;
-      endPlayerTurn();
-    }
-
-    function endPlayerTurn() {
-      game.phase = 'CPU_TURN';
-      game.attackingUids = [];
-      game.blockAssignments = {};
-      renderAll();
-
-      setTimeout(() => {
-        executeCpuTurn();
-      }, 650);
-    }
-
-    // =========================================================================
-    // 7. CPU思考ルーチン（召喚・攻撃・ブロックAI）
-    // =========================================================================
-    function executeCpuTurn() {
-      if (checkGameOver()) return;
-
-      // 状態リセット
-      game.cpu.board.forEach(m => {
-        m.sick = false;
-        m.tapped = false;
-      });
-
-      // 後攻1ターン目のみ手札6枚まで補充、それ以降は5枚
-      const handLimit = !game.cpu.firstTurnDone ? 6 : 5;
-      game.cpu.firstTurnDone = true;
-      const drawn = drawUpToLimit(game.cpu, handLimit);
-
-      addLog(`--- ターン ${game.turn}（CPUのターン） ---`, 'system');
-      if (drawn > 0) {
-        addLog(`CPUはカードを ${drawn} 枚ドローしました。`, 'cpu');
-      }
-
-      // 1) CPU召喚フェイズ：「出せる中で攻撃力+HPが最大のカード」を優先し、価値の低いカードで支払う
-      let summonedCount = 0;
-      while (game.cpu.board.length < 5 && summonedCount < 5) {
-        const didSummon = cpuTrySummonOne(game.cpu, true);
-        if (!didSummon) break;
-        summonedCount++;
-      }
-
-      renderAll();
-
-      // 2) CPU攻撃フェイズ
-      setTimeout(() => {
-        if (checkGameOver()) return;
-
-        const attackers = decideCpuAttackers(game.cpu, game.player);
-        if (attackers.length === 0) {
-          addLog('CPUは攻撃せずにターンを終了しました。', 'cpu');
-          finishCpuTurn();
-          return;
-        }
-
-        game.attackingUids = attackers.map(m => m.uid);
-        const attNames = [];
-        attackers.forEach(m => {
-          m.tapped = true;
-          attNames.push(`${m.name}(⚔️${m.atk})`);
-        });
-
-        addLog(`CPUの攻撃宣言！ [${attNames.join(', ')}]`, 'cpu');
-
-        // プレイヤー側にブロック可能なモンスターがいるか確認
-        const canPlayerBlock = game.player.board.some(m => !m.tapped) &&
-          attackers.some(a => a.ability !== 'unblockable');
-
-        if (!canPlayerBlock) {
-          addLog('ブロック可能なモンスターがいないため、直接ダメージを受けます！', 'combat');
-          resolveCombat('cpu', 'player', game.attackingUids, {});
-          if (checkGameOver()) return;
-          finishCpuTurn();
-          return;
-        }
-
-        // プレイヤーの防御フェイズへ移行
-        game.phase = 'PLAYER_BLOCK';
-        game.blockAssignments = {};
-        game.selectedAttackerForBlock = null;
-        renderAll();
-      }, 650);
-    }
-
-    function cpuTrySummonOne(sideObj, logAction = false) {
-      if (sideObj.board.length >= 5 || sideObj.hand.length === 0) return false;
-
-      // 出せる候補をリストアップ
-      const candidates = sideObj.hand.filter(c => {
-        if (c.ability === 'energy_only') return false;
-        if (c.cost === 0) return true;
-        const otherE = sideObj.hand.filter(o => o.uid !== c.uid).reduce((s, o) => s + o.energy, 0);
-        return otherE >= c.cost;
-      });
-
-      if (candidates.length === 0) return false;
-
-      // 仕様書通り「攻撃力+HPが最大」のカードを優先
-      candidates.sort((a, b) => (b.atk + b.hp) - (a.atk + a.hp) || b.cost - a.cost);
-      const target = candidates[0];
-
-      // 支払い用カードの選定（価値の低いカードを優先して消費）
-      const others = sideObj.hand
-        .filter(c => c.uid !== target.uid)
-        .map(c => {
-          // 支払い価値スコア（低いほど捨てやすい：Eが高く本体スペックが低いカードを優先）
-          const combatVal = (c.ability === 'energy_only') ? -10 : (c.atk + c.hp);
-          return { card: c, score: combatVal - c.energy * 0.6 };
-        })
-        .sort((a, b) => a.score - b.score);
-
-      const chosenCostCards = [];
-      let accE = 0;
-      for (const item of others) {
-        if (accE >= target.cost) break;
-        chosenCostCards.push(item.card);
-        accE += item.card.energy;
-      }
-
-      if (accE < target.cost) return false;
-
-      const costUids = chosenCostCards.map(c => c.uid);
-      sideObj.hand = sideObj.hand.filter(c => {
-        if (c.uid === target.uid) return false;
-        if (costUids.includes(c.uid)) {
-          sideObj.grave.push(c);
-          return false;
-        }
-        return true;
-      });
-
-      target.sick = true;
-      target.tapped = false;
-      sideObj.board.push(target);
-
-      if (logAction) {
-        addLog(`CPUは「${target.name}」(⚔️${target.atk}/❤️${target.hp}) を召喚！`, 'cpu');
-      }
-      return true;
-    }
-
-    function decideCpuAttackers(attSide, defSide) {
-      const ready = attSide.board.filter(m => canMonsterAttack(m));
-      if (ready.length === 0) return [];
-
-      // 仕様書「CPUの戦い方」に基づく基準設定
-      const rules = {
-        '標準': { minAtk: 2, desperateMode: 'defend' },
-        '速攻': { minAtk: 1, desperateMode: 'attack' },
-        '堅守': { minAtk: 3, desperateMode: 'defend' },
-        '重量': { minAtk: 2, desperateMode: 'defend' }
-      };
-      const cfg = rules[attSide.deckType] || rules['標準'];
-
-      // リーサル判定（全軍突撃で相手ライフを削り切れるなら全員で攻撃）
-      const activeBlockersCount = defSide.board.filter(m => !m.tapped).length;
-      const totalPotentialAtk = ready.reduce((s, m) => s + m.atk, 0);
-      if (activeBlockersCount === 0 && totalPotentialAtk >= defSide.life) {
-        return ready;
-      }
-
-      // 負けそうな時（ライフ8以下 または 相手よりライフが6以上少ない）
-      const isLosing = attSide.life <= 8 || (defSide.life - attSide.life >= 6);
-
-      return ready.filter(m => {
-        if (m.ability === 'unblockable') return true;
-        if (isLosing && cfg.desperateMode === 'attack') return m.atk >= 1;
-        if (isLosing && cfg.desperateMode === 'defend') {
-          // 守るモード時は、相手より明らかに強いユニットのみ攻撃
-          return m.atk >= Math.max(cfg.minAtk + 1, 3);
-        }
-        return m.atk >= cfg.minAtk;
-      });
-    }
-
-    // 賢いブロック割り振りロジック（CPU防御時 ＆ プレイヤーの「おまかせ」ボタン共通）
-    function computeSmartBlocks(attSide, defSide, attackingUids, strategyType = '標準') {
-      const assignments = {};
-      const availableBlockers = defSide.board.filter(m => !m.tapped);
-      if (availableBlockers.length === 0) return assignments;
-
-      // 攻撃力の高い順に処理
-      const attackers = attackingUids
-        .map(uid => attSide.board.find(m => m.uid === uid))
-        .filter(m => m && m.ability !== 'unblockable')
-        .sort((a, b) => b.atk - a.atk);
-
-      const usedBlockerUids = new Set();
-
-      // まずブロックしなかった場合の総ダメージを計算
-      let unblockedTotalDamage = attackingUids.reduce((sum, uid) => {
-        const a = attSide.board.find(m => m.uid === uid);
-        return sum + (a ? a.atk : 0);
-      }, 0);
-
-      for (const att of attackers) {
-        const candidates = availableBlockers.filter(b => !usedBlockerUids.has(b.uid));
-        if (candidates.length === 0) break;
-
-        let bestBlocker = null;
-        let bestScore = -999;
-
-        for (const blk of candidates) {
-          const attDies = blk.atk >= att.curHp;
-          const blkDies = att.atk >= blk.curHp;
-          let score = 0;
-
-          if (attDies && !blkDies) {
-            // 一方的に倒せる（最高評価）
-            score = 100 + (att.atk + att.maxHp) * 5;
-          } else if (attDies && blkDies) {
-            // 相打ち：相手のほうが価値が高いか、ダメージが大きいなら積極的
-            const valueDiff = (att.atk + att.maxHp) - (blk.atk + blk.maxHp);
-            score = 40 + valueDiff * 8 + att.atk * 3;
-          } else if (!attDies && !blkDies) {
-            // お互い生き残る（時間稼ぎ・ダメージ軽減）
-            score = 35 + att.atk * 5;
-          } else {
-            // チャンプブロック（自分だけ破壊されライフ-1になるが、直接ダメージを防ぐ）
-            const netLifeSaved = att.atk - 1;
-            const lethalDanger = (defSide.life - unblockedTotalDamage) <= 3;
-            if (lethalDanger && att.atk >= 2) {
-              score = 60 + netLifeSaved * 10;
-            } else if (netLifeSaved >= 3 && strategyType !== '速攻') {
-              score = 15 + netLifeSaved * 4;
-            } else {
-              score = -20; // 無駄死には避ける
-            }
-          }
-
-          if (score > bestScore) {
-            bestScore = score;
-            bestBlocker = blk;
-          }
-        }
-
-        if (bestBlocker && bestScore > 0) {
-          assignments[att.uid] = bestBlocker.uid;
-          usedBlockerUids.add(bestBlocker.uid);
-          unblockedTotalDamage -= att.atk;
-        }
-      }
-
-      return assignments;
-    }
-
-    function autoAssignPlayerBlocks() {
-      if (game.phase !== 'PLAYER_BLOCK') return;
-      game.blockAssignments = computeSmartBlocks(game.cpu, game.player, game.attackingUids, '標準');
-      game.selectedAttackerForBlock = null;
-      renderAll();
-      showToast('最適なブロック割り振りを自動設定しました', 'info');
-    }
-
-    function clearPlayerBlocks() {
-      if (game.phase !== 'PLAYER_BLOCK') return;
-      game.blockAssignments = {};
-      game.selectedAttackerForBlock = null;
-      renderAll();
-    }
-
-    function confirmPlayerBlock() {
-      if (game.phase !== 'PLAYER_BLOCK') return;
-      resolveCombat('cpu', 'player', game.attackingUids, game.blockAssignments);
-      if (checkGameOver()) return;
-      finishCpuTurn();
-    }
-
-    function finishCpuTurn() {
-      if (game.turn >= 12) {
-        // 12ターン終了時の判定
-        evaluateTurnLimitWinner();
-        return;
-      }
-      game.turn++;
-      beginPlayerTurn();
-    }
-
-    // =========================================================================
-    // 8. 戦闘解決＆勝敗判定
-    // =========================================================================
-    function simulateCombatOutcome(attKey, defKey, attackingUids, blockMap) {
-      const attSide = game[attKey];
-      const defSide = game[defKey];
-
-      let directDamage = 0;
-      let attDestroyed = [];
-      let defDestroyed = [];
-      const details = [];
-
-      attackingUids.forEach(aUid => {
-        const attacker = attSide.board.find(m => m.uid === aUid);
-        if (!attacker) return;
-
-        const bUid = blockMap[aUid];
-        const blocker = bUid ? defSide.board.find(m => m.uid === bUid) : null;
-
-        if (!blocker) {
-          directDamage += attacker.atk;
-          details.push({
-            attacker,
-            blocker: null,
-            directDamage: attacker.atk,
-            attDies: false,
-            defDies: false
-          });
-        } else {
-          const attNewHp = attacker.curHp - blocker.atk;
-          const defNewHp = blocker.curHp - attacker.atk;
-          const attDies = attNewHp <= 0;
-          const defDies = defNewHp <= 0;
-
-          if (attDies) attDestroyed.push(attacker);
-          if (defDies) defDestroyed.push(blocker);
-
-          details.push({
-            attacker,
-            blocker,
-            directDamage: 0,
-            attNewHp,
-            defNewHp,
-            attDies,
-            defDies
-          });
-        }
-      });
-
-      return {
-        directDamage,
-        attDestroyed,
-        defDestroyed,
-        attLifeLoss: attDestroyed.length,
-        defLifeLoss: directDamage + defDestroyed.length,
-        details
-      };
-    }
-
-    function resolveCombat(attKey, defKey, attackingUids, blockMap) {
-      const attSide = game[attKey];
-      const defSide = game[defKey];
-      const outcome = simulateCombatOutcome(attKey, defKey, attackingUids, blockMap);
-
-      // HPの更新とログ出力
-      outcome.details.forEach(d => {
-        if (!d.blocker) {
-          addLog(`💥 ${d.attacker.name} の直接攻撃！ ${defSide.name}に ${d.directDamage} ダメージ！`, 'combat');
-        } else {
-          d.attacker.curHp = d.attNewHp;
-          d.blocker.curHp = d.defNewHp;
-          addLog(`⚔️ ${d.attacker.name}(⚔️${d.attacker.atk}) vs ${d.blocker.name}(⚔️${d.blocker.atk}) が交戦！`, 'combat');
-        }
-      });
-
-      // 直接ダメージ適用
-      if (outcome.directDamage > 0) {
-        defSide.life -= outcome.directDamage;
-      }
-
-      // 破壊処理＆破壊ペナルティ（持ち主のライフ -1）
-      if (outcome.attDestroyed.length > 0) {
-        const deadUids = new Set(outcome.attDestroyed.map(m => m.uid));
-        attSide.board = attSide.board.filter(m => {
-          if (deadUids.has(m.uid)) {
-            attSide.grave.push(m);
-            return false;
-          }
-          return true;
-        });
-        attSide.life -= outcome.attDestroyed.length;
-        addLog(`💀 ${attSide.name}の [${outcome.attDestroyed.map(m => m.name).join(', ')}] が破壊され、ライフ -${outcome.attDestroyed.length}！`, 'destroy');
-      }
-
-      if (outcome.defDestroyed.length > 0) {
-        const deadUids = new Set(outcome.defDestroyed.map(m => m.uid));
-        defSide.board = defSide.board.filter(m => {
-          if (deadUids.has(m.uid)) {
-            defSide.grave.push(m);
-            return false;
-          }
-          return true;
-        });
-        defSide.life -= outcome.defDestroyed.length;
-        addLog(`💀 ${defSide.name}の [${outcome.defDestroyed.map(m => m.name).join(', ')}] が破壊され、ライフ -${outcome.defDestroyed.length}！`, 'destroy');
-      }
-
-      renderAll();
-    }
-
-    function checkGameOver() {
-      if (game.player.life <= 0 || game.cpu.life <= 0) {
-        game.phase = 'GAME_OVER';
-        renderAll();
-
-        if (game.player.life <= 0 && game.cpu.life <= 0) {
-          showGameOverModal('DRAW', '相打ち！お互いのライフが同時に0になりました。', '🤝');
-        } else if (game.cpu.life <= 0) {
-          showGameOverModal('VICTORY!', '相手のライフを0にしました！あなたの勝利です！', '🏆');
-        } else {
-          showGameOverModal('DEFEAT...', 'あなたのライフが0になりました…CPUの勝利です。', '💀');
-        }
-        return true;
-      }
-      return false;
-    }
-
-    function evaluateTurnLimitWinner() {
-      game.phase = 'GAME_OVER';
-      renderAll();
-
-      if (game.player.life > game.cpu.life) {
-        showGameOverModal('VICTORY!', `12ターン終了！残りライフ差（${game.player.life} vs ${game.cpu.life}）であなたの勝利です！`, '🏆');
-      } else if (game.cpu.life > game.player.life) {
-        showGameOverModal('DEFEAT...', `12ターン終了！残りライフ差（${game.player.life} vs ${game.cpu.life}）でCPUの勝利です。`, '💀');
-      } else {
-        showGameOverModal('DRAW', `12ターン終了！残りライフが同点（${game.player.life} vs ${game.cpu.life}）のため引き分けです。`, '🤝');
-      }
-    }
-
-    function showGameOverModal(title, reason, icon) {
-      addLog(`=== 決着: ${title} (${reason}) ===`, 'system');
-      const overlay = document.getElementById('game-over-overlay');
-      document.getElementById('game-over-icon').textContent = icon;
-      const titleEl = document.getElementById('game-over-title');
-      titleEl.textContent = title;
-      titleEl.className = `text-3xl sm:text-4xl font-black mb-2 tracking-tight ${
-        title.includes('VICTORY') ? 'text-amber-400' : title.includes('DEFEAT') ? 'text-rose-400' : 'text-sky-300'
-      }`;
-      document.getElementById('game-over-reason').textContent = reason;
-      document.getElementById('final-player-life').textContent = game.player.life;
-      document.getElementById('final-cpu-life').textContent = game.cpu.life;
-      document.getElementById('final-turn').textContent = game.turn;
-      overlay.classList.remove('hidden');
-    }
-
-    // =========================================================================
-    // 9. UI描画レンダリング（カード画像＋ブランクフォールバック対応）
-    // =========================================================================
-    // カードアート描画ヘルパー（画像未配置時はブランク枠へ自動フォールバックしレイアウトを維持）
-    function renderCardArtworkHtml(card, heightClass = 'h-14 sm:h-16') {
-      const imgSrc = card.img || `./images/${card.id}.png`;
-      return `
-        <div class="relative w-full ${heightClass} rounded-lg overflow-hidden bg-slate-800/70 border border-slate-700/80 flex items-center justify-center shrink-0 my-0.5">
-          <img src="${imgSrc}"
-               alt="${card.name}"
-               class="w-full h-full object-cover"
-               onerror="this.style.display='none'; this.nextElementSibling.classList.remove('hidden');">
-          <div class="hidden w-full h-full flex flex-col items-center justify-center bg-slate-100/5 border border-dashed border-slate-600/60 text-slate-400">
-            <span class="text-lg sm:text-xl leading-none opacity-80">${card.emoji || '🃏'}</span>
-            <span class="text-[8px] font-bold tracking-wider uppercase opacity-60 mt-0.5">NO IMAGE</span>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderAll() {
-      // HUD更新
-      document.getElementById('hud-turn').textContent = game.turn;
-      document.getElementById('cpu-life').textContent = game.cpu.life;
-      document.getElementById('cpu-deck-count').textContent = game.cpu.deck.length;
-      document.getElementById('cpu-grave-count').textContent = game.cpu.grave.length;
-      document.getElementById('cpu-hand-count').textContent = game.cpu.hand.length;
-      document.getElementById('cpu-board-count').textContent = game.cpu.board.length;
-
-      document.getElementById('player-life').textContent = game.player.life;
-      document.getElementById('player-deck-count').textContent = game.player.deck.length;
-      document.getElementById('player-grave-count').textContent = game.player.grave.length;
-      document.getElementById('player-hand-count').textContent = game.player.hand.length;
-      document.getElementById('player-board-count').textContent = game.player.board.length;
-
-      // CPU手札の裏面表示
-      const cpuHandEl = document.getElementById('cpu-hand-cards');
-      cpuHandEl.innerHTML = game.cpu.hand.map(() => `
-        <div class="w-6 h-8 rounded bg-gradient-to-br from-rose-900 to-slate-800 border border-rose-500/40 shadow"></div>
-      `).join('');
-
-      renderPhaseControls();
-      renderBoards();
-      renderPlayerHand();
-      renderCombatPreview();
-    }
-
-    function renderPhaseControls() {
-      const badgeEl = document.getElementById('phase-badge');
-      const instEl = document.getElementById('phase-instruction');
-      const actionsEl = document.getElementById('phase-actions');
-
-      if (game.phase === 'PLAYER_SUMMON') {
-        badgeEl.textContent = '1. 召喚フェイズ';
-        badgeEl.className = 'px-2.5 py-1 rounded-lg bg-sky-500/20 border border-sky-500/40 text-sky-300 font-extrabold text-xs whitespace-nowrap';
-        instEl.textContent = game.summonTargetUid
-          ? 'コストとして捨てる手札をクリックし、「召喚実行」を押してください。'
-          : '手札から召喚したいカードを選ぶか、攻撃フェイズへ進んでください。';
-
-        actionsEl.innerHTML = `
-          <button onclick="goToPlayerAttackPhase()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-rose-500 to-orange-600 hover:from-rose-400 hover:to-orange-500 text-white font-extrabold text-xs sm:text-sm shadow transition">
-            ⚔️ 攻撃フェイズへ
-          </button>
-        `;
-      } else if (game.phase === 'PLAYER_ATTACK') {
-        badgeEl.textContent = '2. 攻撃宣言フェイズ';
-        badgeEl.className = 'px-2.5 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-300 font-extrabold text-xs whitespace-nowrap';
-        instEl.textContent = '攻撃させる自分のモンスターをクリックして選択し、攻撃確定を押してください。';
-
-        actionsEl.innerHTML = `
-          <button onclick="selectAllAttackers()" class="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs transition">
-            全軍選択
-          </button>
-          <button onclick="confirmPlayerAttack()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-extrabold text-xs sm:text-sm shadow transition">
-            ${game.attackingUids.length > 0 ? `🔥 攻撃実行 (${game.attackingUids.length}体)` : '⏭️ 攻撃せずターン終了'}
-          </button>
-        `;
-      } else if (game.phase === 'CPU_TURN') {
-        badgeEl.textContent = 'CPU 行動中...';
-        badgeEl.className = 'px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-300 font-extrabold text-xs whitespace-nowrap';
-        instEl.textContent = 'CPUが思考しています...';
-        actionsEl.innerHTML = '';
-      } else if (game.phase === 'PLAYER_BLOCK') {
-        badgeEl.textContent = '🛡️ 防御・ブロック選択';
-        badgeEl.className = 'px-2.5 py-1 rounded-lg bg-indigo-500/30 border border-indigo-400 text-indigo-200 font-extrabold text-xs whitespace-nowrap animate-pulse';
-        instEl.textContent = 'CPUの攻撃モンスターをクリック後、ブロックさせる自分のモンスターを選んでください。';
-
-        actionsEl.innerHTML = `
-          <button onclick="autoAssignPlayerBlocks()" class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow transition">
-            ✨ おまかせ割り振り
-          </button>
-          <button onclick="clearPlayerBlocks()" class="px-2.5 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs transition">
-            解除
-          </button>
-          <button onclick="confirmPlayerBlock()" class="px-4 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-xs sm:text-sm shadow transition">
-            🛡️ 防御確定・戦闘解決
-          </button>
-        `;
-      } else {
-        badgeEl.textContent = '試合終了';
-        instEl.textContent = '「新規対戦開始」ボタンから再戦できます。';
-        actionsEl.innerHTML = '';
-      }
-    }
-
-    function renderBoards() {
-      const cpuBoardEl = document.getElementById('cpu-board');
-      const playerBoardEl = document.getElementById('player-board');
-
-      // ペア色分けマップの作成
-      const pairInfoMap = {}; // uid -> { label, border, bg, badge }
-      game.attackingUids.forEach((aUid, idx) => {
-        const style = PAIR_COLORS[idx % PAIR_COLORS.length];
-        pairInfoMap[aUid] = style;
-        const bUid = game.blockAssignments[aUid];
-        if (bUid) {
-          pairInfoMap[bUid] = style;
-        }
-      });
-
-      // CPU盤面描画（5スロット固定）
-      let cpuHtml = '';
-      for (let i = 0; i < 5; i++) {
-        const m = game.cpu.board[i];
-        if (!m) {
-          cpuHtml += `<div class="h-32 sm:h-36 rounded-xl border border-dashed border-slate-800/80 flex items-center justify-center text-[10px] text-slate-700">空き</div>`;
-        } else {
-          cpuHtml += createBoardCardHtml(m, 'cpu', pairInfoMap[m.uid]);
-        }
-      }
-      cpuBoardEl.innerHTML = cpuHtml;
-
-      // Player盤面描画（5スロット固定）
-      let playerHtml = '';
-      for (let i = 0; i < 5; i++) {
-        const m = game.player.board[i];
-        if (!m) {
-          playerHtml += `<div class="h-32 sm:h-36 rounded-xl border border-dashed border-slate-800/80 flex items-center justify-center text-[10px] text-slate-700">空き</div>`;
-        } else {
-          playerHtml += createBoardCardHtml(m, 'player', pairInfoMap[m.uid]);
-        }
-      }
-      playerBoardEl.innerHTML = playerHtml;
-    }
-
-    function createBoardCardHtml(m, side, pairStyle) {
-      const isAttacking = game.attackingUids.includes(m.uid);
-      const isSelectedBlockTarget = game.selectedAttackerForBlock === m.uid;
-      const isDamaged = m.curHp < m.maxHp;
-
-      let borderClass = 'border-slate-700 bg-slate-900';
-      if (pairStyle) {
-        borderClass = `${pairStyle.border} ${pairStyle.bg}`;
-      } else if (isAttacking) {
-        borderClass = 'border-rose-500 bg-rose-950/40';
-      }
-
-      const tapClass = m.tapped ? 'card-tapped' : '';
-      const sickClass = m.sick ? 'card-sick' : '';
-      const focusRing = isSelectedBlockTarget ? 'ring-2 ring-amber-400 scale-105' : '';
-
-      // ステータスバッジ
-      let statusTag = '';
-      if (m.tapped) {
-        statusTag = `<span class="px-1 py-0.2 rounded bg-slate-800/95 text-slate-300 text-[8px] font-bold">攻撃済</span>`;
-      } else if (m.sick) {
-        statusTag = `<span class="px-1 py-0.2 rounded bg-indigo-950/95 text-indigo-300 text-[8px] font-bold">酔い</span>`;
-      } else if (side === 'player' && game.phase === 'PLAYER_ATTACK' && m.ability !== 'cant_attack') {
-        statusTag = `<span class="px-1 py-0.2 rounded bg-rose-600 text-white text-[8px] font-bold">${isAttacking ? '攻撃中' : '攻撃可'}</span>`;
-      } else if (side === 'player' && game.phase === 'PLAYER_BLOCK') {
-        statusTag = `<span class="px-1 py-0.2 rounded bg-emerald-600 text-white text-[8px] font-bold">防御可</span>`;
-      }
-
-      const pairBadge = pairStyle
-        ? `<span class="absolute -top-2 -left-2 z-10 w-5 h-5 rounded-full ${pairStyle.badge} text-[10px] font-black flex items-center justify-center shadow">${pairStyle.label}</span>`
-        : '';
-
-      const abilityIcon = m.ability === 'unblockable' ? '👻' : m.ability === 'cant_attack' ? '🧱' : '';
-
-      return `
-        <div onclick="onBoardCardClick('${side}', '${m.uid}')"
-             class="card-transition relative h-32 sm:h-36 rounded-xl border-2 ${borderClass} ${tapClass} ${sickClass} ${focusRing} p-1.5 flex flex-col justify-between cursor-pointer shadow-md hover:brightness-110">
-          ${pairBadge}
-          <div class="flex items-center justify-between gap-1">
-            <span class="text-[10px] sm:text-xs font-extrabold truncate text-white">${m.name}${abilityIcon}</span>
-            <span class="text-[9px] text-slate-400 font-bold shrink-0">C${m.cost}</span>
-          </div>
-
-          <div class="relative w-full">
-            ${renderCardArtworkHtml(m, 'h-14 sm:h-16')}
-            ${statusTag ? `<div class="absolute bottom-1 right-1 z-10">${statusTag}</div>` : ''}
-          </div>
-
-          <div class="grid grid-cols-2 gap-1 text-center text-[10px] sm:text-xs font-black">
-            <div class="bg-rose-950/90 border border-rose-500/40 rounded py-0.5 text-rose-300">
-              ⚔️${m.atk}
-            </div>
-            <div class="bg-sky-950/90 border border-sky-500/40 rounded py-0.5 ${isDamaged ? 'text-amber-400' : 'text-sky-300'}">
-              ❤️${m.curHp}<span class="text-[8px] opacity-75">/${m.maxHp}</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderPlayerHand() {
-      const handEl = document.getElementById('player-hand');
-      const costBar = document.getElementById('summon-cost-bar');
-
-      if (game.summonTargetUid) {
-        const target = game.player.hand.find(c => c.uid === game.summonTargetUid);
-        const curE = game.costSelectedUids.reduce((sum, uid) => {
-          const c = game.player.hand.find(x => x.uid === uid);
-          return sum + (c ? c.energy : 0);
-        }, 0);
-
-        costBar.classList.remove('hidden');
-        document.getElementById('summon-target-name').textContent = target ? target.name : '';
-        document.getElementById('summon-req-cost').textContent = target ? target.cost : 0;
-        document.getElementById('summon-cur-energy').textContent = curE;
-        document.getElementById('btn-confirm-summon').disabled = !target || curE < target.cost;
-      } else {
-        costBar.classList.add('hidden');
-      }
-
-      if (game.player.hand.length === 0) {
-        handEl.innerHTML = `<div class="flex items-center justify-center text-xs text-slate-600 h-36">手札がありません</div>`;
-        return;
-      }
-
-      handEl.innerHTML = game.player.hand.map(c => {
-        const isTarget = game.summonTargetUid === c.uid;
-        const isCostSelected = game.costSelectedUids.includes(c.uid);
-
-        let extraClass = 'border-slate-700 bg-slate-900 card-hover';
-        let badgeHtml = '';
-
-        if (isTarget) {
-          extraClass = 'card-selected-summon bg-sky-950/60';
-          badgeHtml = `<span class="absolute -top-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 rounded-full bg-sky-500 text-slate-950 font-black text-[9px] whitespace-nowrap shadow">召喚対象</span>`;
-        } else if (isCostSelected) {
-          extraClass = 'card-selected-cost bg-amber-950/60';
-          badgeHtml = `<span class="absolute -top-2 left-1/2 -translate-x-1/2 z-10 px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] whitespace-nowrap shadow">コスト(+${c.energy}E)</span>`;
-        } else if (game.summonTargetUid) {
-          badgeHtml = `<span class="absolute -top-2 left-1/2 -translate-x-1/2 z-10 px-1.5 py-0.5 rounded bg-slate-800 border border-amber-500/50 text-amber-300 font-bold text-[9px] whitespace-nowrap">選択で+${c.energy}E</span>`;
-        }
-
-        const abilityBadge = c.ability !== 'none'
-          ? `<div class="text-[8px] text-amber-300 truncate text-center leading-tight">${c.desc.replace('【拡張】', '')}</div>`
-          : '';
-
-        return `
-          <div onclick="onPlayerHandClick('${c.uid}')"
-               class="card-transition relative w-28 sm:w-32 shrink-0 h-38 sm:h-42 rounded-xl border-2 ${extraClass} p-1.5 sm:p-2 flex flex-col justify-between cursor-pointer shadow-lg">
-            ${badgeHtml}
-            <div class="flex items-center justify-between gap-1">
-              <span class="px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-300 font-black text-[10px]">
-                コスト ${c.cost}
-              </span>
-              <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 font-black text-[10px]">
-                ⚡E ${c.energy}
-              </span>
-            </div>
-
-            ${renderCardArtworkHtml(c, 'h-16 sm:h-20')}
-
-            <div class="text-center">
-              <div class="text-xs font-extrabold text-white truncate">${c.name}</div>
-              ${abilityBadge}
-            </div>
-
-            <div class="grid grid-cols-2 gap-1 text-center text-xs font-black mt-0.5">
-              <div class="bg-rose-950/90 border border-rose-500/40 rounded py-0.5 text-rose-300">⚔️${c.atk}</div>
-              <div class="bg-sky-950/90 border border-sky-500/40 rounded py-0.5 text-sky-300">❤️${c.hp}</div>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderCombatPreview() {
-      const panel = document.getElementById('combat-preview-panel');
-      if (game.phase !== 'PLAYER_BLOCK' || game.attackingUids.length === 0) {
-        panel.classList.add('hidden');
-        return;
-      }
-
-      panel.classList.remove('hidden');
-      const outcome = simulateCombatOutcome('cpu', 'player', game.attackingUids, game.blockAssignments);
-
-      const summaryEl = document.getElementById('combat-direct-damage-summary');
-      summaryEl.textContent = `あなたの予想ライフ変動: -${outcome.defLifeLoss} (直接${outcome.directDamage} + 破壊罰${outcome.defLifeLoss - outcome.directDamage}) / CPU破壊罰: -${outcome.attLifeLoss}`;
-
-      const listEl = document.getElementById('combat-preview-list');
-      listEl.innerHTML = outcome.details.map((d, idx) => {
-        const pairStyle = PAIR_COLORS[idx % PAIR_COLORS.length];
-        if (!d.blocker) {
-          return `
-            <div class="bg-slate-900/90 border ${pairStyle.border} rounded-lg p-1.5 flex items-center justify-between">
-              <span class="font-bold text-white"><span class="px-1 rounded ${pairStyle.badge} mr-1">${pairStyle.label}</span>${d.attacker.name}(⚔️${d.attacker.atk})</span>
-              <span class="text-rose-400 font-extrabold">未ブロック → 直撃 -${d.directDamage}</span>
-            </div>
-          `;
-        }
-        const attRes = d.attDies ? '<span class="text-emerald-400 font-bold">敵破壊!</span>' : `敵残HP:${d.attNewHp}`;
-        const defRes = d.defDies ? '<span class="text-rose-400 font-bold">自破壊(-1)</span>' : `自残HP:${d.defNewHp}`;
-        return `
-          <div class="bg-slate-900/90 border ${pairStyle.border} rounded-lg p-1.5 flex items-center justify-between gap-1">
-            <span class="font-bold text-white truncate"><span class="px-1 rounded ${pairStyle.badge} mr-1">${pairStyle.label}</span>${d.attacker.name} vs ${d.blocker.name}</span>
-            <span class="text-[11px] whitespace-nowrap">${attRes} / ${defRes}</span>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function renderLogs() {
-      const logEl = document.getElementById('battle-log');
-      logEl.innerHTML = game.logs.map(l => {
-        const colors = {
-          system: 'text-amber-300 font-bold bg-amber-950/30 border-l-2 border-amber-400 pl-2 py-0.5',
-          player: 'text-sky-300 border-l-2 border-sky-500 pl-2 py-0.5',
-          cpu: 'text-rose-300 border-l-2 border-rose-500 pl-2 py-0.5',
-          combat: 'text-slate-200 pl-2',
-          destroy: 'text-orange-400 font-bold pl-2'
-        };
-        return `<div class="${colors[l.category] || 'text-slate-300'}">${l.message}</div>`;
-      }).join('');
-    }
-
-    // =========================================================================
-    // 10. タブ切替＆カード・デッキ編集エディタ
-    // =========================================================================
-    function switchTab(tabName) {
-      ['battle', 'editor', 'sim'].forEach(t => {
-        document.getElementById(`view-${t}`).classList.toggle('hidden', t !== tabName);
-        const btn = document.getElementById(`tab-${t}`);
-        if (t === tabName) {
-          btn.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition bg-sky-600 text-white shadow';
-        } else {
-          btn.className = 'px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition text-slate-300 hover:text-white';
-        }
-      });
-
-      if (tabName === 'editor') {
-        renderEditorTable();
-      }
-    }
-
-    function toggleRulesModal(show) {
-      document.getElementById('rules-modal').classList.toggle('hidden', !show);
-    }
-
-    function renderEditorTable() {
-      const tbody = document.getElementById('editor-table-body');
-      tbody.innerHTML = cardDatabase.map((c, idx) => `
-        <tr class="hover:bg-slate-800/40 transition">
-          <td class="p-2 font-bold text-white whitespace-nowrap">${c.emoji} ${c.name}</td>
-          <td class="p-2 text-xs text-slate-400 font-mono">${c.img || `./images/${c.id}.png`}</td>
-          <td class="p-2">
-            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${c.type === 'シンプル' ? 'bg-sky-950 text-sky-300 border border-sky-700' : 'bg-purple-950 text-purple-300 border border-purple-700'}">
-              ${c.type}
-            </span>
-          </td>
-          <td class="p-2 text-center"><input type="number" min="0" max="10" value="${c.cost}" onchange="updateCardStat(${idx}, 'cost', this.value)" class="w-12 bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-center font-bold text-amber-400"></td>
-          <td class="p-2 text-center"><input type="number" min="0" max="10" value="${c.energy}" onchange="updateCardStat(${idx}, 'energy', this.value)" class="w-12 bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-center font-bold text-emerald-400"></td>
-          <td class="p-2 text-center"><input type="number" min="0" max="15" value="${c.atk}" onchange="updateCardStat(${idx}, 'atk', this.value)" class="w-12 bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-center font-bold text-rose-400"></td>
-          <td class="p-2 text-center"><input type="number" min="1" max="20" value="${c.hp}" onchange="updateCardStat(${idx}, 'hp', this.value)" class="w-12 bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-center font-bold text-sky-400"></td>
-          ${DECK_TYPES.map(dt => `
-            <td class="p-2 text-center">
-              <input type="number" min="0" max="10" value="${c.decks[dt] || 0}" onchange="updateDeckCount(${idx}, '${dt}', this.value)" class="w-12 bg-slate-950 border border-slate-700 rounded px-1.5 py-1 text-center font-bold text-white">
-            </td>
-          `).join('')}
-          <td class="p-2 text-xs text-slate-400">${c.desc}</td>
-        </tr>
-      `).join('');
-
-      updateDeckValidationSummary();
-    }
-
-    function updateCardStat(idx, field, val) {
-      cardDatabase[idx][field] = Math.max(0, parseInt(val, 10) || 0);
-      updateDeckValidationSummary();
-    }
-
-    function updateDeckCount(idx, deckType, val) {
-      cardDatabase[idx].decks[deckType] = Math.max(0, parseInt(val, 10) || 0);
-      updateDeckValidationSummary();
-    }
-
-    function updateDeckValidationSummary() {
-      const container = document.getElementById('deck-validation-summary');
-      container.innerHTML = DECK_TYPES.map(dt => {
-        let totalCards = 0;
-        let totalCost = 0;
-        let totalEnergy = 0;
-
-        cardDatabase.forEach(c => {
-          const cnt = c.decks[dt] || 0;
-          totalCards += cnt;
-          totalCost += c.cost * cnt;
-          totalEnergy += c.energy * cnt;
-        });
-
-        const isValid = totalCards === 20;
-        const avgCost = totalCards > 0 ? (totalCost / totalCards).toFixed(2) : '0.00';
-        const avgE = totalCards > 0 ? (totalEnergy / totalCards).toFixed(2) : '0.00';
-
-        return `
-          <div class="bg-slate-950 border ${isValid ? 'border-emerald-500/40' : 'border-rose-500'} rounded-xl p-3">
-            <div class="flex items-center justify-between mb-1">
-              <span class="font-extrabold text-sm text-white">${dt}デッキ</span>
-              <span class="px-2 py-0.5 rounded text-xs font-black ${isValid ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'}">
-                ${totalCards} / 20枚
-              </span>
-            </div>
-            <div class="text-xs text-slate-400 flex justify-between">
-              <span>平均コスト: <strong class="text-amber-400">${avgCost}</strong></span>
-              <span>平均E: <strong class="text-emerald-400">${avgE}</strong></span>
-            </div>
-          </div>
-        `;
-      }).join('');
-    }
-
-    function saveCustomData() {
-      localStorage.setItem('ecard_custom_db', JSON.stringify(cardDatabase));
-      showToast('カードデータとデッキ設定を保存しました！', 'success');
-    }
-
-    function resetDefaultData() {
-      cardDatabase = JSON.parse(JSON.stringify(DEFAULT_CARDS));
-      localStorage.removeItem('ecard_custom_db');
-      renderEditorTable();
-      showToast('仕様書の初期値にリセットしました', 'info');
-    }
-
-    // =========================================================================
-    // 11. 高速AIバランスシミュレーター（4デッキ総当たり検証）
-    // =========================================================================
-    function simulateSingleHeadlessGame(deckTypeA, deckTypeB) {
-      const p1 = { deckType: deckTypeA, life: 20, deck: buildDeck(deckTypeA, false), hand: [], board: [], grave: [], firstTurnDone: false };
-      const p2 = { deckType: deckTypeB, life: 20, deck: buildDeck(deckTypeB, false), hand: [], board: [], grave: [], firstTurnDone: false };
-
-      for (let turn = 1; turn <= 12; turn++) {
-        // 先攻(p1) ＆ 後攻(p2) の順で実行
-        const sides = [
-          { att: p1, def: p2, isSecondFirstTurn: false },
-          { att: p2, def: p1, isSecondFirstTurn: !p2.firstTurnDone }
-        ];
-
-        for (const step of sides) {
-          const { att, def, isSecondFirstTurn } = step;
-          att.board.forEach(m => { m.sick = false; m.tapped = false; });
-
-          const handLimit = isSecondFirstTurn ? 6 : 5;
-          att.firstTurnDone = true;
-          while (att.hand.length < handLimit && att.deck.length > 0) {
-            att.hand.push(att.deck.pop());
-          }
-
-          // 召喚フェイズ
-          let safety = 0;
-          while (att.board.length < 5 && safety < 10) {
-            if (!cpuTrySummonOne(att)) break;
-            safety++;
-          }
-
-          // 攻撃宣言フェイズ
-          const attackers = decideCpuAttackers(att, def);
-          if (attackers.length > 0) {
-            attackers.forEach(m => m.tapped = true);
-            const attackingUids = attackers.map(m => m.uid);
-            const blockMap = computeSmartBlocks(att, def, attackingUids, def.deckType);
-
-            const deadAtt = new Set();
-            const deadDef = new Set();
-
-            attackingUids.forEach(aUid => {
-              const aMon = att.board.find(m => m.uid === aUid);
-              const bUid = blockMap[aUid];
-              const bMon = bUid ? def.board.find(m => m.uid === bUid) : null;
-
-              if (!bMon) {
-                def.life -= aMon.atk;
-              } else {
-                aMon.curHp -= bMon.atk;
-                bMon.curHp -= aMon.atk;
-                if (aMon.curHp <= 0) deadAtt.add(aMon.uid);
-                if (bMon.curHp <= 0) deadDef.add(bMon.uid);
-              }
-            });
-
-            if (deadAtt.size > 0) {
-              att.board = att.board.filter(m => {
-                if (deadAtt.has(m.uid)) { att.life -= 1; return false; }
-                return true;
-              });
-            }
-            if (deadDef.size > 0) {
-              def.board = def.board.filter(m => {
-                if (deadDef.has(m.uid)) { def.life -= 1; return false; }
-                return true;
-              });
-            }
-          }
-
-          if (p1.life <= 0 || p2.life <= 0) {
-            if (p1.life <= 0 && p2.life <= 0) return { winner: 'draw', turns: turn };
-            return { winner: p1.life > 0 ? 'p1' : 'p2', turns: turn };
-          }
-        }
-      }
-
-      if (p1.life > p2.life) return { winner: 'p1', turns: 12 };
-      if (p2.life > p1.life) return { winner: 'p2', turns: 12 };
-      return { winner: 'draw', turns: 12 };
-    }
-
-    function runBalanceSimulation() {
-      const gamesPerPair = parseInt(document.getElementById('sim-games-count').value, 10) || 500;
-      const btn = document.getElementById('btn-run-sim');
-      btn.disabled = true;
-      btn.textContent = '⏳ 計算中...';
-
-      setTimeout(() => {
-        const stats = {};
-        DECK_TYPES.forEach(dt => {
-          stats[dt] = { wins: 0, losses: 0, draws: 0, totalGames: 0, vs: {} };
-          DECK_TYPES.forEach(opp => {
-            stats[dt].vs[opp] = { wins: 0, losses: 0, draws: 0 };
-          });
-        });
-
-        let firstPlayerWins = 0;
-        let secondPlayerWins = 0;
-        let totalDraws = 0;
-        let totalTurns = 0;
-        let grandTotal = 0;
-
-        for (const dA of DECK_TYPES) {
-          for (const dB of DECK_TYPES) {
-            for (let i = 0; i < gamesPerPair; i++) {
-              const res = simulateSingleHeadlessGame(dA, dB);
-              grandTotal++;
-              totalTurns += res.turns;
-              stats[dA].totalGames++;
-              stats[dB].totalGames++;
-
-              if (res.winner === 'p1') {
-                firstPlayerWins++;
-                stats[dA].wins++;
-                stats[dB].losses++;
-                stats[dA].vs[dB].wins++;
-                stats[dB].vs[dA].losses++;
-              } else if (res.winner === 'p2') {
-                secondPlayerWins++;
-                stats[dB].wins++;
-                stats[dA].losses++;
-                stats[dB].vs[dA].wins++;
-                stats[dA].vs[dB].losses++;
-              } else {
-                totalDraws++;
-                stats[dA].draws++;
-                stats[dB].draws++;
-                stats[dA].vs[dB].draws++;
-                stats[dB].vs[dA].draws++;
-              }
-            }
-          }
-        }
-
-        renderSimulationResults(stats, grandTotal, firstPlayerWins, secondPlayerWins, totalDraws, totalTurns, gamesPerPair);
-        btn.disabled = false;
-        btn.textContent = '⚡ シミュレーション実行';
-        showToast(`全 ${grandTotal.toLocaleString()} 戦のシミュレーションが完了しました`, 'success');
-      }, 50);
-    }
-
-    function renderSimulationResults(stats, grandTotal, p1Wins, p2Wins, draws, totalTurns, gamesPerPair) {
-      const container = document.getElementById('sim-results-container');
-      const p1Rate = ((p1Wins / grandTotal) * 100).toFixed(1);
-      const p2Rate = ((p2Wins / grandTotal) * 100).toFixed(1);
-      const drawRate = ((draws / grandTotal) * 100).toFixed(1);
-      const avgTurn = (totalTurns / grandTotal).toFixed(1);
-
-      const deckCardsHtml = DECK_TYPES.map(dt => {
-        const s = stats[dt];
-        const winRate = ((s.wins / s.totalGames) * 100).toFixed(1);
-        const isBalanced = winRate >= 45.0 && winRate <= 55.0;
-
-        return `
-          <div class="bg-slate-950 border ${isBalanced ? 'border-emerald-500/40' : 'border-amber-500/50'} rounded-xl p-4">
-            <div class="flex items-center justify-between mb-2">
-              <span class="font-extrabold text-base text-white">${dt}デッキ</span>
-              <span class="px-2 py-0.5 rounded text-xs font-black ${isBalanced ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}">
-                ${isBalanced ? '✅ 適正バランス' : '⚠️ 要調整'}
-              </span>
-            </div>
-            <div class="text-2xl font-black ${isBalanced ? 'text-emerald-400' : 'text-amber-400'} mb-1">
-              勝率 ${winRate}%
-            </div>
-            <div class="text-xs text-slate-400">
-              ${s.wins.toLocaleString()}勝 / ${s.losses.toLocaleString()}敗 / ${s.draws.toLocaleString()}分
-            </div>
-          </div>
-        `;
-      }).join('');
-
-      const matrixRows = DECK_TYPES.map(dA => {
-        const cells = DECK_TYPES.map(dB => {
-          const vs = stats[dA].vs[dB];
-          const total = gamesPerPair * 2; // 先攻・後攻両方
-          const rate = ((vs.wins / total) * 100).toFixed(1);
-          const color = rate >= 55 ? 'text-emerald-400 font-bold' : rate <= 45 ? 'text-rose-400' : 'text-slate-200';
-          return `<td class="p-2.5 text-center ${color}">${rate}%</td>`;
-        }).join('');
-        return `
-          <tr class="border-b border-slate-800/80">
-            <td class="p-2.5 font-extrabold text-white bg-slate-950/60">${dA}</td>
-            ${cells}
-          </tr>
-        `;
-      }).join('');
-
-      container.innerHTML = `
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-            <div class="text-xs text-slate-400">先攻勝率 (初手5枚)</div>
-            <div class="text-xl font-black text-sky-400">${p1Rate}%</div>
-          </div>
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-            <div class="text-xs text-slate-400">後攻勝率 (初手6枚)</div>
-            <div class="text-xl font-black text-rose-400">${p2Rate}%</div>
-          </div>
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-            <div class="text-xs text-slate-400">引き分け率</div>
-            <div class="text-xl font-black text-slate-300">${drawRate}%</div>
-          </div>
-          <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3">
-            <div class="text-xs text-slate-400">平均決着ターン</div>
-            <div class="text-xl font-black text-amber-400">${avgTurn} T</div>
-          </div>
-        </div>
-
-        <div>
-          <h3 class="text-sm font-bold text-slate-300 mb-2">デッキ別総合勝率（仕様目標: 45%〜55%）</h3>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            ${deckCardsHtml}
-          </div>
-        </div>
-
-        <div>
-          <h3 class="text-sm font-bold text-slate-300 mb-2">相性マトリクス（行デッキの勝率 %）</h3>
-          <div class="overflow-x-auto border border-slate-800 rounded-xl">
-            <table class="w-full text-xs sm:text-sm">
-              <thead>
-                <tr class="bg-slate-950 text-slate-300 border-b border-slate-800">
-                  <th class="p-2.5 text-left">自分 ＼ 相手</th>
-                  ${DECK_TYPES.map(dt => `<th class="p-2.5 text-center">${dt}</th>`).join('')}
-                </tr>
-              </thead>
-              <tbody class="bg-slate-900/50">
-                ${matrixRows}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    }
-
-    // 初期起動
-    window.addEventListener('DOMContentLoaded', () => {
-      startNewGame();
+    } catch (e) {}
+  }
+  cardMaster = JSON.parse(JSON.stringify(DEFAULT_CARDS));
+  document.getElementById('saveStatus').textContent = 'データ: 初期仕様';
+  refreshCsvTextarea();
+  renderEditTable();
+}
+
+function saveCardMaster(label = '保存済みカスタム') {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(cardMaster));
+  document.getElementById('saveStatus').textContent = 'データ: ' + label;
+  refreshCsvTextarea();
+  renderEditTable();
+}
+
+function resetToDefault() {
+  if (!confirm('カード一覧とデッキ枚数を初期仕様に戻しますか？')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  cardMaster = JSON.parse(JSON.stringify(DEFAULT_CARDS));
+  document.getElementById('saveStatus').textContent = 'データ: 初期仕様';
+  refreshCsvTextarea();
+  renderEditTable();
+  document.getElementById('csvMsg').textContent = '初期仕様に戻しました。';
+}
+
+// --- CSV 生成・パース ---
+function cardsToCsv(list) {
+  const header = 'id,name,cost,e,atk,hp,ability,s_you,s_aggro,s_def,s_heavy,e_you,e_aggro,e_def,e_heavy';
+  const lines = list.map(c => [
+    c.id, c.name, c.cost, c.e, c.atk, c.hp, c.ability || '',
+    c.s_you, c.s_aggro, c.s_def, c.s_heavy,
+    c.e_you, c.e_aggro, c.e_def, c.e_heavy
+  ].join(','));
+  return [header, ...lines].join('
+');
+}
+
+function parseCsvToCards(text) {
+  const clean = text.replace(/^﻿/, '').trim();
+  const lines = clean.split(/?
+/).filter(l => l.trim() !== '');
+  if (lines.length < 2) throw new Error('CSVの行数が不足しています。');
+  const headers = lines[0].split(',').map(h => h.trim());
+  const required = ['id','name','cost','e','atk','hp'];
+  for (const req of required) {
+    if (!headers.includes(req)) throw new Error(`必須列「${req}」が見つかりません。`);
+  }
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',').map(v => v.trim());
+    if (cols.length < 6 || !cols[0]) continue;
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = cols[idx] !== undefined ? cols[idx] : ''; });
+    const abilityRaw = (obj.ability || '').toLowerCase();
+    let ability = '';
+    if (abilityRaw.includes('evade') || abilityRaw.includes('回避')) ability = 'evade';
+    else if (abilityRaw.includes('snipe') || abilityRaw.includes('狙撃')) ability = 'snipe';
+    else if (abilityRaw.includes('supply') || abilityRaw.includes('補給')) ability = 'supply';
+
+    result.push({
+      id: obj.id,
+      name: obj.name || obj.id,
+      cost: Math.max(0, parseInt(obj.cost, 10) || 0),
+      e: Math.max(0, parseInt(obj.e, 10) || 0),
+      atk: Math.max(0, parseInt(obj.atk, 10) || 0),
+      hp: Math.max(1, parseInt(obj.hp, 10) || 1),
+      ability,
+      s_you:   Math.max(0, parseInt(obj.s_you, 10) || 0),
+      s_aggro: Math.max(0, parseInt(obj.s_aggro, 10) || 0),
+      s_def:   Math.max(0, parseInt(obj.s_def, 10) || 0),
+      s_heavy: Math.max(0, parseInt(obj.s_heavy, 10) || 0),
+      e_you:   Math.max(0, parseInt(obj.e_you, 10) || 0),
+      e_aggro: Math.max(0, parseInt(obj.e_aggro, 10) || 0),
+      e_def:   Math.max(0, parseInt(obj.e_def, 10) || 0),
+      e_heavy: Math.max(0, parseInt(obj.e_heavy, 10) || 0)
     });
-  </script>
+  }
+  if (result.length === 0) throw new Error('有効なカード行が読み取れませんでした。');
+  return result;
+}
+
+function refreshCsvTextarea() {
+  document.getElementById('csvTextarea').value = cardsToCsv(cardMaster);
+}
+
+function applyCsvText() {
+  const msgEl = document.getElementById('csvMsg');
+  try {
+    const parsed = parseCsvToCards(document.getElementById('csvTextarea').value);
+    cardMaster = parsed;
+    saveCardMaster('CSV反映済み');
+    msgEl.style.color = 'var(--success)';
+    msgEl.textContent = `CSVから ${parsed.length} 種類のカードを読み込み、保存しました。`;
+  } catch (err) {
+    msgEl.style.color = 'var(--danger)';
+    msgEl.textContent = 'エラー: ' + err.message;
+  }
+}
+
+function loadCsvFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('csvTextarea').value = e.target.result;
+    applyCsvText();
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function downloadCsvFile() {
+  const csv = '﻿' + cardsToCsv(cardMaster);
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'cards.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// --- テーブル編集 ---
+function renderEditTable() {
+  const tbl = document.getElementById('cardEditTable');
+  let html = `<tr>
+    <th>ID</th><th>名前</th><th>コスト</th><th>E</th><th>攻撃</th><th>HP</th><th>能力</th>
+    <th>シンプル<br>あなた</th><th>シンプル<br>速攻</th><th>シンプル<br>堅守</th><th>シンプル<br>重量</th>
+    <th>拡張<br>あなた</th><th>拡張<br>速攻</th><th>拡張<br>堅守</th><th>拡張<br>重量</th>
+  </tr>`;
+  cardMaster.forEach((c, idx) => {
+    html += `<tr>
+      <td>${c.id}</td>
+      <td><input class="name-in" type="text" data-idx="${idx}" data-field="name" value="${c.name}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="cost" value="${c.cost}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="e" value="${c.e}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="atk" value="${c.atk}"></td>
+      <td><input type="number" min="1" data-idx="${idx}" data-field="hp" value="${c.hp}"></td>
+      <td>
+        <select data-idx="${idx}" data-field="ability">
+          <option value="" ${c.ability===''?'selected':''}>なし</option>
+          <option value="evade" ${c.ability==='evade'?'selected':''}>回避</option>
+          <option value="snipe" ${c.ability==='snipe'?'selected':''}>狙撃</option>
+          <option value="supply" ${c.ability==='supply'?'selected':''}>補給</option>
+        </select>
+      </td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="s_you" value="${c.s_you}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="s_aggro" value="${c.s_aggro}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="s_def" value="${c.s_def}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="s_heavy" value="${c.s_heavy}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="e_you" value="${c.e_you}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="e_aggro" value="${c.e_aggro}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="e_def" value="${c.e_def}"></td>
+      <td><input type="number" min="0" data-idx="${idx}" data-field="e_heavy" value="${c.e_heavy}"></td>
+    </tr>`;
+  });
+  tbl.innerHTML = html;
+}
+
+function applyTableEdits() {
+  const inputs = document.querySelectorAll('#cardEditTable [data-idx]');
+  inputs.forEach(el => {
+    const idx = parseInt(el.dataset.idx, 10);
+    const field = el.dataset.field;
+    if (field === 'name' || field === 'ability') {
+      cardMaster[idx][field] = el.value;
+    } else {
+      cardMaster[idx][field] = Math.max(0, parseInt(el.value, 10) || 0);
+    }
+  });
+  saveCardMaster('テーブル編集済み');
+  alert('カード表の変更を反映・保存しました。');
+}
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.drawer').forEach(d => d.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.remove('hidden');
+  btn.classList.add('active');
+}
+
+// --- デッキ構築 ---
+function buildDeck(ruleMode, roleKey) {
+  const prefix = (ruleMode === 'simple') ? 's_' : 'e_';
+  const col = prefix + roleKey;
+  const deck = [];
+  cardMaster.forEach(c => {
+    const cnt = c[col] || 0;
+    for (let i = 0; i < cnt; i++) {
+      deck.push({
+        uid: Math.random().toString(36).slice(2),
+        id: c.id,
+        name: c.name,
+        cost: c.cost,
+        e: c.e,
+        atk: c.atk,
+        hp: c.hp,
+        maxHp: c.hp,
+        ability: c.ability || '',
+        tapped: false,
+        summonedThisTurn: false
+      });
+    }
+  });
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  return deck;
+}
+
+// --- ゲーム進行 ---
+function startNewGame() {
+  const ruleMode = document.getElementById('ruleMode').value;
+  const cpuType = document.getElementById('cpuType').value;
+  const cpuRoleMap = { standard:'you', aggro:'aggro', defense:'def', heavy:'heavy' };
+
+  G = {
+    ruleMode,
+    cpuType,
+    turn: 1,
+    phase: 'summon', // summon | snipe | attack | block | gameover
+    youLife: 20,
+    cpuLife: 20,
+    youDeck: buildDeck(ruleMode, 'you'),
+    cpuDeck: buildDeck(ruleMode, cpuRoleMap[cpuType]),
+    youHand: [],
+    cpuHand: [],
+    youBoard: [],
+    cpuBoard: [],
+    selectedHandIdx: null,
+    payIndices: new Set(),
+    swappedThisTurn: false,
+    selectedAttackers: new Set(),
+    cpuAttackers: [],
+    blockAssignments: {}, // attackerIdx -> blockerIdx
+    logs: []
+  };
+
+  for (let i = 0; i < 5; i++) if (G.youDeck.length) G.youHand.push(G.youDeck.pop());
+  for (let i = 0; i < 6; i++) if (G.cpuDeck.length) G.cpuHand.push(G.cpuDeck.pop());
+
+  document.getElementById('resultBanner').classList.add('hidden');
+  document.getElementById('blockPanel').classList.add('hidden');
+  document.getElementById('cpuNameDisp').textContent = CPU_META[cpuType].label;
+
+  addLog(`対戦開始！（${ruleMode === 'simple' ? 'シンプル' : '拡張'} / vs ${CPU_META[cpuType].label}）`);
+  renderAll();
+}
+
+function addLog(msg) {
+  if (!G) return;
+  G.logs.unshift(`T${G.turn}: ${msg}`);
+  if (G.logs.length > 3) G.logs.pop();
+}
+
+function checkGameOver() {
+  if (!G || G.phase === 'gameover') return true;
+  if (G.youLife <= 0 || G.cpuLife <= 0) {
+    G.phase = 'gameover';
+    const banner = document.getElementById('resultBanner');
+    banner.classList.remove('hidden');
+    if (G.youLife <= 0 && G.cpuLife <= 0) {
+      banner.textContent = '引き分け（同時ライフ0）';
+    } else if (G.cpuLife <= 0) {
+      banner.textContent = 'あなたの勝利！';
+    } else {
+      banner.textContent = 'CPUの勝利…';
+    }
+    addLog(banner.textContent);
+    renderAll();
+    return true;
+  }
+  return false;
+}
+
+// --- プレイヤー手札・召喚・交換 ---
+function onHandClick(idx) {
+  if (!G || G.phase !== 'summon') return;
+  if (G.selectedHandIdx === idx) {
+    G.selectedHandIdx = null;
+    G.payIndices.clear();
+  } else if (G.selectedHandIdx === null) {
+    G.selectedHandIdx = idx;
+    G.payIndices.clear();
+  } else {
+    if (G.payIndices.has(idx)) {
+      G.payIndices.delete(idx);
+    } else {
+      G.payIndices.add(idx);
+    }
+  }
+  renderAll();
+}
+
+function executeSwap() {
+  if (!G || G.phase !== 'summon' || G.swappedThisTurn) return;
+  if (G.selectedHandIdx === null) return;
+  if (G.youDeck.length === 0) {
+    alert('山札がないため交換できません。');
+    return;
+  }
+  const discarded = G.youHand.splice(G.selectedHandIdx, 1)[0];
+  const drawn = G.youDeck.pop();
+  G.youHand.push(drawn);
+  G.swappedThisTurn = true;
+  G.selectedHandIdx = null;
+  G.payIndices.clear();
+  addLog(`手札交換：「${discarded.name}」を捨てて1枚引いた。`);
+  renderAll();
+}
+
+function executeSummon() {
+  if (!G || G.phase !== 'summon' || G.selectedHandIdx === null) return;
+  if (G.youBoard.length >= 5) {
+    alert('場が5体でいっぱいです。');
+    return;
+  }
+  const target = G.youHand[G.selectedHandIdx];
+  let payE = 0;
+  G.payIndices.forEach(i => { payE += G.youHand[i].e; });
+  if (payE < target.cost) return;
+
+  const removeList = [G.selectedHandIdx, ...Array.from(G.payIndices)].sort((a, b) => b - a);
+  removeList.forEach(i => G.youHand.splice(i, 1));
+
+  target.summonedThisTurn = true;
+  target.tapped = false;
+  G.youBoard.push(target);
+  G.selectedHandIdx = null;
+  G.payIndices.clear();
+  addLog(`「${target.name}」を召喚！`);
+
+  // 登場時能力
+  if (target.ability === 'supply') {
+    if (G.youDeck.length > 0) {
+      G.youHand.push(G.youDeck.pop());
+      addLog(`補給効果：山札から1枚引いた。`);
+    }
+  } else if (target.ability === 'snipe') {
+    if (G.cpuBoard.length > 0) {
+      G.phase = 'snipe';
+      addLog(`狙撃効果：ダメージを与える相手のモンスターを選んでください。`);
+    } else {
+      addLog(`狙撃効果：相手の場にモンスターがいないため不発。`);
+    }
+  }
+  renderAll();
+}
+
+function onCpuMonsterClick(idx) {
+  if (!G || G.phase !== 'snipe') return;
+  const target = G.cpuBoard[idx];
+  if (!target) return;
+  target.hp -= 2;
+  addLog(`狙撃！「${target.name}」に2ダメージ！`);
+  if (target.hp <= 0) {
+    G.cpuBoard.splice(idx, 1);
+    G.cpuLife -= 1;
+    addLog(`「${target.name}」を撃破！（相手ライフ-1）`);
+  }
+  G.phase = 'summon';
+  if (!checkGameOver()) renderAll();
+}
+
+// --- プレイヤー攻撃フェイズ ---
+function goToAttackPhase() {
+  if (!G || G.phase !== 'summon') return;
+  G.selectedHandIdx = null;
+  G.payIndices.clear();
+  G.selectedAttackers.clear();
+
+  const canAttack = G.youBoard.some(m => !m.summonedThisTurn && !m.tapped);
+  if (!canAttack) {
+    addLog('攻撃可能なモンスターがいないためターン終了。');
+    startCpuTurn();
+    return;
+  }
+  G.phase = 'attack';
+  renderAll();
+}
+
+function onYouMonsterClick(idx) {
+  if (!G || G.phase !== 'attack') return;
+  const m = G.youBoard[idx];
+  if (!m || m.summonedThisTurn || m.tapped) return;
+  if (G.selectedAttackers.has(idx)) G.selectedAttackers.delete(idx);
+  else G.selectedAttackers.add(idx);
+  renderAll();
+}
+
+function endPlayerTurn() {
+  if (!G || G.phase !== 'attack') return;
+  G.selectedAttackers.clear();
+  addLog('攻撃せずターン終了。');
+  startCpuTurn();
+}
+
+function executePlayerAttack() {
+  if (!G || G.phase !== 'attack') return;
+  if (G.selectedAttackers.size === 0) {
+    endPlayerTurn();
+    return;
+  }
+  const attackers = Array.from(G.selectedAttackers).map(i => G.youBoard[i]);
+  attackers.forEach(a => { a.tapped = true; });
+  G.selectedAttackers.clear();
+
+  // CPUのブロック割り振り
+  const blockers = G.cpuBoard.filter(m => !m.tapped);
+  const usedBlockers = new Set();
+  const pairs = [];
+
+  const sortedAtk = [...attackers].sort((a, b) => b.atk - a.atk);
+  for (const a of sortedAtk) {
+    if (a.ability === 'evade') {
+      pairs.push([a, null]);
+      continue;
+    }
+    let bestB = null;
+    let bestScore = -999;
+    for (const b of blockers) {
+      if (usedBlockers.has(b)) continue;
+      const killsA = b.atk >= a.hp;
+      const diesB = a.atk >= b.hp;
+      let score = -999;
+      if (killsA && !diesB) {
+        score = 100 + a.atk * 5;
+      } else if (killsA && diesB) {
+        if ((a.atk + a.hp) >= (b.atk + b.hp) || G.cpuLife <= 12) {
+          score = 50 + (a.atk - b.atk) * 5;
+        }
+      } else {
+        if (b.hp - a.atk >= 2 && a.atk >= 2) score = 40 + a.atk * 4;
+        else if (G.cpuLife <= 10 || a.atk >= 3) score = 20 + a.atk * 3 - (b.atk + b.hp);
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestB = b;
+      }
+    }
+    if (bestB && bestScore > 0) {
+      usedBlockers.add(bestB);
+      pairs.push([a, bestB]);
+    } else {
+      pairs.push([a, null]);
+    }
+  }
+
+  resolveCombat(pairs, 'you');
+  if (!checkGameOver()) {
+    startCpuTurn();
+  }
+}
+
+function resolveCombat(pairs, atkSide) {
+  const deadYou = [];
+  const deadCpu = [];
+  let directDmg = 0;
+
+  for (const [a, b] of pairs) {
+    if (!b) {
+      directDmg += a.atk;
+      if (atkSide === 'you') G.cpuLife -= a.atk;
+      else G.youLife -= a.atk;
+    } else {
+      a.hp -= b.atk;
+      b.hp -= a.atk;
+      if (atkSide === 'you') {
+        if (a.hp <= 0 && !deadYou.includes(a)) deadYou.push(a);
+        if (b.hp <= 0 && !deadCpu.includes(b)) deadCpu.push(b);
+      } else {
+        if (a.hp <= 0 && !deadCpu.includes(a)) deadCpu.push(a);
+        if (b.hp <= 0 && !deadYou.includes(b)) deadYou.push(b);
+      }
+    }
+  }
+
+  deadYou.forEach(d => {
+    const idx = G.youBoard.indexOf(d);
+    if (idx !== -1) G.youBoard.splice(idx, 1);
+    G.youLife -= 1;
+  });
+  deadCpu.forEach(d => {
+    const idx = G.cpuBoard.indexOf(d);
+    if (idx !== -1) G.cpuBoard.splice(idx, 1);
+    G.cpuLife -= 1;
+  });
+
+  const who = atkSide === 'you' ? 'あなた' : 'CPU';
+  addLog(`${who}の攻撃：直接${directDmg}ダメ / 撃破(自${deadYou.length}・敵${deadCpu.length})`);
+}
+
+// --- CPUターン ---
+function findBestPaymentJS(hand, targetIdx, targetCost) {
+  if (targetCost === 0) return [];
+  const cands = [];
+  hand.forEach((c, i) => { if (i !== targetIdx) cands.push({ i, c }); });
+  cands.sort((a, b) => (a.c.atk + a.c.hp + a.c.e * 0.3) - (b.c.atk + b.c.hp + b.c.e * 0.3));
+  let best = null;
+  let bestScore = [999, 999, 999];
+  const n = cands.length;
+  for (let mask = 1; mask < (1 << n); mask++) {
+    let eSum = 0, valSum = 0;
+    const sub = [];
+    for (let bit = 0; bit < n; bit++) {
+      if ((mask >> bit) & 1) {
+        eSum += cands[bit].c.e;
+        valSum += (cands[bit].c.atk + cands[bit].c.hp + cands[bit].c.e * 0.3);
+        sub.push(cands[bit].i);
+      }
+    }
+    if (eSum >= targetCost) {
+      const sc = [eSum - targetCost, sub.length, valSum];
+      if (sc[0] < bestScore[0] || (sc[0] === bestScore[0] && (sc[1] < bestScore[1] || (sc[1] === bestScore[1] && sc[2] < bestScore[2])))) {
+        bestScore = sc;
+        best = sub;
+      }
+    }
+  }
+  return best;
+}
+
+function startCpuTurn() {
+  if (!G || G.phase === 'gameover') return;
+
+  // CPU開始時補充（1ターン目以外）
+  if (G.turn > 1) {
+    while (G.cpuHand.length < 5 && G.cpuDeck.length > 0) {
+      G.cpuHand.push(G.cpuDeck.pop());
+    }
+  }
+  G.cpuBoard.forEach(m => { m.tapped = false; m.summonedThisTurn = false; });
+
+  // CPU召喚フェイズ
+  while (G.cpuBoard.length < 5 && G.cpuHand.length > 0) {
+    let bestIdx = -1, bestVal = -1, bestPay = null;
+    G.cpuHand.forEach((c, i) => {
+      const pay = findBestPaymentJS(G.cpuHand, i, c.cost);
+      if (pay !== null) {
+        const bonus = c.ability ? 1.5 : 0;
+        const val = c.atk + c.hp + bonus;
+        if (val > bestVal) {
+          bestVal = val;
+          bestIdx = i;
+          bestPay = pay;
+        }
+      }
+    });
+    if (bestIdx === -1) break;
+    const summoned = G.cpuHand[bestIdx];
+    const rem = [bestIdx, ...bestPay].sort((a, b) => b - a);
+    rem.forEach(i => G.cpuHand.splice(i, 1));
+    summoned.summonedThisTurn = true;
+    summoned.tapped = false;
+    G.cpuBoard.push(summoned);
+    addLog(`CPUが「${summoned.name}」を召喚！`);
+
+    if (summoned.ability === 'supply' && G.cpuDeck.length > 0) {
+      G.cpuHand.push(G.cpuDeck.pop());
+      addLog(`CPUの補給：1枚ドロー。`);
+    } else if (summoned.ability === 'snipe' && G.youBoard.length > 0) {
+      // 倒せる相手優先、回避持ち優先
+      let bestTIdx = 0, bestTScore = -999;
+      G.youBoard.forEach((m, idx) => {
+        let sc = 0;
+        if (m.hp <= 2) sc += 50 + m.atk * 5;
+        if (m.ability === 'evade') sc += 30;
+        sc += m.atk * 2;
+        if (sc > bestTScore) { bestTScore = sc; bestTIdx = idx; }
+      });
+      const tgt = G.youBoard[bestTIdx];
+      tgt.hp -= 2;
+      addLog(`CPUの狙撃！「${tgt.name}」に2ダメージ！`);
+      if (tgt.hp <= 0) {
+        G.youBoard.splice(bestTIdx, 1);
+        G.youLife -= 1;
+        addLog(`あなたの「${tgt.name}」が倒された！（ライフ-1）`);
+      }
+      if (checkGameOver()) return;
+    }
+  }
+
+  // CPU攻撃判断
+  const cfg = CPU_META[G.cpuType];
+  const isLosing = (G.cpuLife < G.youLife && G.cpuLife <= 10);
+  const yourThreat = G.youBoard.filter(m => !m.tapped).reduce((s, m) => s + m.atk, 0);
+  let keepBlockers = 0;
+  if (!(isLosing && cfg.desperate === 'attack')) {
+    if (yourThreat >= G.cpuLife || (isLosing && cfg.desperate === 'defend')) {
+      keepBlockers = Math.min(G.cpuBoard.length, 2);
+    }
+  }
+
+  const eligible = G.cpuBoard
+    .filter(m => !m.summonedThisTurn && !m.tapped && m.atk >= cfg.minAtk)
+    .sort((a, b) => (b.atk - a.atk) || (b.hp - a.hp));
+
+  const maxAtkCount = Math.max(0, G.cpuBoard.length - keepBlockers);
+  const attackers = eligible.slice(0, maxAtkCount);
+
+  if (attackers.length === 0) {
+    addLog('CPUは攻撃せずターン終了。');
+    advanceToNextTurn();
+    return;
+  }
+
+  attackers.forEach(a => { a.tapped = true; });
+  G.cpuAttackers = attackers;
+  G.blockAssignments = {};
+
+  // ブロック可能な自軍がいなければ即解決
+  const availBlockers = G.youBoard.filter(m => !m.tapped);
+  if (availBlockers.length === 0) {
+    const pairs = attackers.map(a => [a, null]);
+    resolveCombat(pairs, 'cpu');
+    if (!checkGameOver()) advanceToNextTurn();
+    return;
+  }
+
+  G.phase = 'block';
+  renderAll();
+}
+
+// --- プレイヤーブロック割り振り ---
+function onBlockSelectChange(atkIdx, val) {
+  if (val === '') {
+    delete G.blockAssignments[atkIdx];
+  } else {
+    const bIdx = parseInt(val, 10);
+    // 重複解除
+    Object.keys(G.blockAssignments).forEach(k => {
+      if (G.blockAssignments[k] === bIdx) delete G.blockAssignments[k];
+    });
+    G.blockAssignments[atkIdx] = bIdx;
+  }
+  renderAll();
+}
+
+function autoAssignBlocks() {
+  if (!G || G.phase !== 'block') return;
+  G.blockAssignments = {};
+  const used = new Set();
+  G.cpuAttackers.forEach((a, aIdx) => {
+    if (a.ability === 'evade') return;
+    let bestBIdx = -1, bestScore = -999;
+    G.youBoard.forEach((b, bIdx) => {
+      if (b.tapped || used.has(bIdx)) return;
+      const killsA = b.atk >= a.hp;
+      const diesB = a.atk >= b.hp;
+      let sc = -999;
+      if (killsA && !diesB) sc = 100 + a.atk * 5;
+      else if (killsA && diesB && ((a.atk + a.hp) >= (b.atk + b.hp) || G.youLife <= 12)) sc = 50 + (a.atk - b.atk) * 5;
+      else if (b.hp - a.atk >= 2 && a.atk >= 2) sc = 40 + a.atk * 4;
+      else if (G.youLife <= 10 || a.atk >= 3) sc = 20 + a.atk * 3 - (b.atk + b.hp);
+      if (sc > bestScore) { bestScore = sc; bestBIdx = bIdx; }
+    });
+    if (bestBIdx !== -1 && bestScore > 0) {
+      used.add(bestBIdx);
+      G.blockAssignments[aIdx] = bestBIdx;
+    }
+  });
+  renderAll();
+}
+
+function clearBlocks() {
+  if (!G || G.phase !== 'block') return;
+  G.blockAssignments = {};
+  renderAll();
+}
+
+function confirmBlocks() {
+  if (!G || G.phase !== 'block') return;
+  const pairs = G.cpuAttackers.map((a, aIdx) => {
+    const bIdx = G.blockAssignments[aIdx];
+    const b = (bIdx !== undefined) ? G.youBoard[bIdx] : null;
+    return [a, b];
+  });
+  document.getElementById('blockPanel').classList.add('hidden');
+  resolveCombat(pairs, 'cpu');
+  if (!checkGameOver()) advanceToNextTurn();
+}
+
+function advanceToNextTurn() {
+  if (G.turn >= 12) {
+    G.phase = 'gameover';
+    const banner = document.getElementById('resultBanner');
+    banner.classList.remove('hidden');
+    if (G.youLife > G.cpuLife) banner.textContent = `12ターン終了！あなたの勝利（${G.youLife} vs ${G.cpuLife}）`;
+    else if (G.cpuLife > G.youLife) banner.textContent = `12ターン終了！CPUの勝利（${G.youLife} vs ${G.cpuLife}）`;
+    else banner.textContent = `12ターン終了！引き分け（${G.youLife} vs ${G.cpuLife}）`;
+    addLog(banner.textContent);
+    renderAll();
+    return;
+  }
+
+  G.turn += 1;
+  G.phase = 'summon';
+  G.swappedThisTurn = false;
+  G.selectedHandIdx = null;
+  G.payIndices.clear();
+  G.youBoard.forEach(m => { m.tapped = false; m.summonedThisTurn = false; });
+
+  while (G.youHand.length < 5 && G.youDeck.length > 0) {
+    G.youHand.push(G.youDeck.pop());
+  }
+  renderAll();
+}
+
+// --- 描画 ---
+function createCardHtml(c, opts = {}) {
+  const cls = ['card'];
+  if (opts.selected) cls.push('selected');
+  if (opts.paySelected) cls.push('pay-selected');
+  if (opts.attacker) cls.push('attacker');
+  if (c.tapped) cls.push('tapped');
+  if (opts.targetable) cls.push('targetable');
+
+  let stateText = '';
+  if (c.tapped) stateText = '攻撃済';
+  else if (c.summonedThisTurn) stateText = '召喚酔い';
+
+  const emoji = EMOJI_MAP[c.id] || '👾';
+  const abText = ABILITY_LABEL[c.ability] || '';
+
+  return `
+    <div class="${cls.join(' ')}" ${opts.onClick ? `onclick="${opts.onClick}"` : ''}>
+      <div class="card-top">
+        <span class="cost-tag">コスト ${c.cost}</span>
+        <span class="e-tag">E ${c.e}</span>
+      </div>
+      <div class="card-name">${c.name}</div>
+      ${stateText ? `<div class="state-badge">${stateText}</div>` : ''}
+      <div class="art-box">
+        <img src="./images/${c.id}.png" alt="${c.name}"
+             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <div class="art-placeholder" style="display:none; flex-direction:column; align-items:center;">
+          <span class="art-emoji">${emoji}</span>
+          <span>NO IMAGE</span>
+        </div>
+      </div>
+      <div class="ability-tag">${abText}</div>
+      <div class="card-stats">
+        <span class="stat-atk">攻 ${c.atk}</span>
+        <span class="stat-hp">HP ${c.hp}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderAll() {
+  if (!G) return;
+  document.getElementById('youLife').textContent = Math.max(0, G.youLife);
+  document.getElementById('cpuLife').textContent = Math.max(0, G.cpuLife);
+  document.getElementById('youLifeBar').style.width = Math.max(0, Math.min(100, (G.youLife / 20) * 100)) + '%';
+  document.getElementById('cpuLifeBar').style.width = Math.max(0, Math.min(100, (G.cpuLife / 20) * 100)) + '%';
+  document.getElementById('youDeck').textContent = G.youDeck.length;
+  document.getElementById('cpuDeck').textContent = G.cpuDeck.length;
+  document.getElementById('cpuHand').textContent = G.cpuHand.length;
+  document.getElementById('turnNum').textContent = G.turn;
+
+  const phaseNames = {
+    summon: '召喚フェイズ',
+    snipe: '狙撃対象選択',
+    attack: '攻撃宣言フェイズ',
+    block: '防御割り振りフェイズ',
+    gameover: '決着'
+  };
+  document.getElementById('phaseLabel').textContent = phaseNames[G.phase] || '';
+
+  // ログ
+  document.getElementById('logBox').innerHTML = G.logs.map(l => `<div class="log-item">${l}</div>`).join('');
+
+  // CPU盤面
+  document.getElementById('snipeHint').textContent = (G.phase === 'snipe') ? '▲ ダメージを与える相手をクリック！' : '';
+  document.getElementById('cpuBoard').innerHTML = G.cpuBoard.map((c, idx) =>
+    createCardHtml(c, {
+      targetable: G.phase === 'snipe',
+      attacker: G.phase === 'block' && G.cpuAttackers.includes(c),
+      onClick: G.phase === 'snipe' ? `onCpuMonsterClick(${idx})` : ''
+    })
+  ).join('');
+
+  // あなた盤面
+  document.getElementById('youBoard').innerHTML = G.youBoard.map((c, idx) =>
+    createCardHtml(c, {
+      attacker: G.phase === 'attack' && G.selectedAttackers.has(idx),
+      onClick: G.phase === 'attack' ? `onYouMonsterClick(${idx})` : ''
+    })
+  ).join('');
+
+  // あなた手札
+  document.getElementById('youHand').innerHTML = G.youHand.map((c, idx) =>
+    createCardHtml(c, {
+      selected: G.selectedHandIdx === idx,
+      paySelected: G.payIndices.has(idx),
+      onClick: G.phase === 'summon' ? `onHandClick(${idx})` : ''
+    })
+  ).join('');
+
+  // ボタン制御とガイド
+  const btnSummon = document.getElementById('btnSummon');
+  const btnSwap = document.getElementById('btnSwap');
+  const btnToAttack = document.getElementById('btnToAttack');
+  const btnExecAttack = document.getElementById('btnExecAttack');
+  const btnEndTurn = document.getElementById('btnEndTurn');
+  const payCalc = document.getElementById('payCalcInfo');
+  const guide = document.getElementById('actionGuide');
+
+  btnSwap.textContent = `1枚交換（残${G.swappedThisTurn ? 0 : 1}回）`;
+  payCalc.textContent = '';
+
+  if (G.phase === 'summon') {
+    btnToAttack.classList.remove('hidden');
+    btnExecAttack.classList.add('hidden');
+    btnEndTurn.classList.add('hidden');
+    btnToAttack.disabled = false;
+
+    if (G.selectedHandIdx === null) {
+      btnSummon.disabled = true;
+      btnSwap.disabled = true;
+      guide.textContent = '手札から召喚（または交換）するカードを1枚クリックしてください。';
+    } else {
+      const target = G.youHand[G.selectedHandIdx];
+      let payE = 0;
+      G.payIndices.forEach(i => { payE += G.youHand[i].e; });
+      payCalc.textContent = `必要コスト: ${target.cost} / 選択E合計: ${payE}`;
+      btnSummon.disabled = (payE < target.cost) || (G.youBoard.length >= 5);
+      btnSwap.disabled = G.swappedThisTurn || (G.youDeck.length === 0) || (G.payIndices.size > 0);
+
+      if (target.cost === 0) {
+        guide.textContent = `「${target.name}」を選択中（コスト0：そのまま「召喚する」を押せます）`;
+      } else {
+        guide.textContent = `「${target.name}」を選択中。支払い用に捨てる他の手札をクリックしてEを${target.cost}以上にしてください。`;
+      }
+    }
+  } else if (G.phase === 'attack') {
+    btnSummon.disabled = true;
+    btnSwap.disabled = true;
+    btnToAttack.classList.add('hidden');
+    btnExecAttack.classList.remove('hidden');
+    btnEndTurn.classList.remove('hidden');
+    guide.textContent = '攻撃させるあなたのモンスターをクリックして選択してください。';
+  } else {
+    btnSummon.disabled = true;
+    btnSwap.disabled = true;
+    btnToAttack.disabled = true;
+    btnExecAttack.classList.add('hidden');
+    btnEndTurn.classList.add('hidden');
+    if (G.phase === 'block') guide.textContent = '上の防御パネルでブロック割り振りを行ってください。';
+    else if (G.phase === 'snipe') guide.textContent = '相手の場のモンスターをクリックして2ダメージを与えてください。';
+    else guide.textContent = '対戦終了。「新規対戦スタート」で再戦できます。';
+  }
+
+  // ブロックパネル描画
+  if (G.phase === 'block') {
+    const bp = document.getElementById('blockPanel');
+    bp.classList.remove('hidden');
+    const colors = ['#ff6b6b','#fcc419','#51cf66','#339af0','#cc5de8'];
+    const usedSet = new Set(Object.values(G.blockAssignments));
+
+    let rowsHtml = '';
+    G.cpuAttackers.forEach((a, aIdx) => {
+      const assignedBIdx = G.blockAssignments[aIdx];
+      const dotColor = assignedBIdx !== undefined ? colors[aIdx % colors.length] : '#555';
+      let resultPreview = `<span style="color:var(--danger);">本体に ${a.atk} ダメージ</span>`;
+
+      if (assignedBIdx !== undefined) {
+        const b = G.youBoard[assignedBIdx];
+        const aDies = b.atk >= a.hp;
+        const bDies = a.atk >= b.hp;
+        if (aDies && !bDies) resultPreview = `<span style="color:var(--success);">敵「${a.name}」撃破（味方生存）</span>`;
+        else if (aDies && bDies) resultPreview = `<span style="color:var(--warn);">相打ち（双方撃破・互いライフ-1）</span>`;
+        else if (!aDies && bDies) resultPreview = `<span style="color:var(--danger);">味方「${b.name}」撃破（敵はHP${a.hp - b.atk}で生存）</span>`;
+        else resultPreview = `<span style="color:var(--accent);">双方生存（敵HP${a.hp - b.atk} / 味方HP${b.hp - a.atk}）</span>`;
+      }
+
+      if (a.ability === 'evade') {
+        rowsHtml += `<div class="block-row">
+          <span class="pair-dot" style="background:#555"></span>
+          <strong>敵「${a.name}」(攻${a.atk}/HP${a.hp})</strong>
+          <span style="color:#ffd43b;">[回避持ち・ブロック不可]</span>
+          <span>→ ${resultPreview}</span>
+        </div>`;
+      } else {
+        let optionsHtml = `<option value="">ブロックしない</option>`;
+        G.youBoard.forEach((b, bIdx) => {
+          if (b.tapped) return;
+          if (usedSet.has(bIdx) && assignedBIdx !== bIdx) return;
+          optionsHtml += `<option value="${bIdx}" ${assignedBIdx === bIdx ? 'selected' : ''}>${b.name} (攻${b.atk}/HP${b.hp})</option>`;
+        });
+        rowsHtml += `<div class="block-row">
+          <span class="pair-dot" style="background:${dotColor}"></span>
+          <strong>敵「${a.name}」(攻${a.atk}/HP${a.hp})</strong>
+          <span>を</span>
+          <select onchange="onBlockSelectChange(${aIdx}, this.value)">${optionsHtml}</select>
+          <span>で防御 → ${resultPreview}</span>
+        </div>`;
+      }
+    });
+    document.getElementById('blockRows').innerHTML = rowsHtml;
+  }
+}
+
+// --- AI自動対戦シミュレーター ---
+function simOneGame(ruleMode, cpuType) {
+  const cpuRoleMap = { standard:'you', aggro:'aggro', defense:'def', heavy:'heavy' };
+  const decks = [buildDeck(ruleMode, 'you'), buildDeck(ruleMode, cpuRoleMap[cpuType])];
+  const hands = [[], []];
+  const boards = [[], []];
+  const lives = [20, 20];
+
+  for (let i = 0; i < 5; i++) if (decks[0].length) hands[0].push(decks[0].pop());
+  for (let i = 0; i < 6; i++) if (decks[1].length) hands[1].push(decks[1].pop());
+
+  for (let turn = 1; turn <= 12; turn++) {
+    for (let side = 0; side < 2; side++) {
+      const opp = 1 - side;
+      if (turn > 1) {
+        while (hands[side].length < 5 && decks[side].length > 0) hands[side].push(decks[side].pop());
+      }
+      boards[side].forEach(m => { m.tapped = false; m.summonedThisTurn = false; });
+
+      // あなたAIの交換判断
+      if (side === 0 && decks[0].length > 0 && hands[0].length > 0) {
+        const playable = hands[0].some((c, i) => findBestPaymentJS(hands[0], i, c.cost) !== null);
+        if (!playable) {
+          let worstI = 0, worstSc = -999;
+          hands[0].forEach((c, i) => {
+            const sc = (c.cost - c.e) * 10 - c.e;
+            if (sc > worstSc) { worstSc = sc; worstI = i; }
+          });
+          hands[0].splice(worstI, 1);
+          hands[0].push(decks[0].pop());
+        }
+      }
+
+      // 召喚
+      while (boards[side].length < 5 && hands[side].length > 0) {
+        let bestIdx = -1, bestVal = -1, bestPay = null;
+        hands[side].forEach((c, i) => {
+          const pay = findBestPaymentJS(hands[side], i, c.cost);
+          if (pay !== null) {
+            const val = c.atk + c.hp + (c.ability ? 1.5 : 0);
+            if (val > bestVal) { bestVal = val; bestIdx = i; bestPay = pay; }
+          }
+        });
+        if (bestIdx === -1) break;
+        const summoned = hands[side][bestIdx];
+        [bestIdx, ...bestPay].sort((a, b) => b - a).forEach(i => hands[side].splice(i, 1));
+        summoned.summonedThisTurn = true;
+        summoned.tapped = false;
+        boards[side].push(summoned);
+
+        if (summoned.ability === 'supply' && decks[side].length > 0) {
+          hands[side].push(decks[side].pop());
+        } else if (summoned.ability === 'snipe' && boards[opp].length > 0) {
+          let bestT = 0, bestS = -999;
+          boards[opp].forEach((m, idx) => {
+            let s = (m.hp <= 2 ? 50 + m.atk * 5 : 0) + (m.ability === 'evade' ? 30 : 0) + m.atk * 2;
+            if (s > bestS) { bestS = s; bestT = idx; }
+          });
+          boards[opp][bestT].hp -= 2;
+          if (boards[opp][bestT].hp <= 0) {
+            boards[opp].splice(bestT, 1);
+            lives[opp] -= 1;
+            if (lives[opp] <= 0) return side === 0 ? 'win' : 'lose';
+          }
+        }
+      }
+
+      // 攻撃
+      const cfg = side === 0 ? CPU_META.standard : CPU_META[cpuType];
+      const isLosing = (lives[side] < lives[opp] && lives[side] <= 10);
+      const oppThreat = boards[opp].filter(m => !m.tapped).reduce((s, m) => s + m.atk, 0);
+      let keep = 0;
+      if (!(isLosing && cfg.desperate === 'attack')) {
+        if (oppThreat >= lives[side] || (isLosing && cfg.desperate === 'defend')) {
+          keep = Math.min(boards[side].length, 2);
+        }
+      }
+      const eligible = boards[side]
+        .filter(m => !m.summonedThisTurn && !m.tapped && m.atk >= cfg.minAtk)
+        .sort((a, b) => (b.atk - a.atk) || (b.hp - a.hp));
+      const attackers = eligible.slice(0, Math.max(0, boards[side].length - keep));
+
+      if (attackers.length > 0) {
+        attackers.forEach(a => { a.tapped = true; });
+        const blockers = boards[opp].filter(m => !m.tapped);
+        const used = new Set();
+        const pairs = [];
+
+        for (const a of [...attackers].sort((x, y) => y.atk - x.atk)) {
+          if (a.ability === 'evade') { pairs.push([a, null]); continue; }
+          let bestB = null, bestSc = -999;
+          for (const b of blockers) {
+            if (used.has(b)) continue;
+            const kA = b.atk >= a.hp, dB = a.atk >= b.hp;
+            let sc = -999;
+            if (kA && !dB) sc = 100 + a.atk * 5;
+            else if (kA && dB && ((a.atk + a.hp) >= (b.atk + b.hp) || lives[opp] <= 12)) sc = 50 + (a.atk - b.atk) * 5;
+            else if (b.hp - a.atk >= 2 && a.atk >= 2) sc = 40 + a.atk * 4;
+            else if (lives[opp] <= 10 || a.atk >= 3) sc = 20 + a.atk * 3 - (b.atk + b.hp);
+            if (sc > bestSc) { bestSc = sc; bestB = b; }
+          }
+          if (bestB && bestSc > 0) { used.add(bestB); pairs.push([a, bestB]); }
+          else pairs.push([a, null]);
+        }
+
+        const deadS = [], deadO = [];
+        for (const [a, b] of pairs) {
+          if (!b) {
+            lives[opp] -= a.atk;
+          } else {
+            a.hp -= b.atk;
+            b.hp -= a.atk;
+            if (a.hp <= 0 && !deadS.includes(a)) deadS.push(a);
+            if (b.hp <= 0 && !deadO.includes(b)) deadO.push(b);
+          }
+        }
+        deadS.forEach(d => { boards[side].splice(boards[side].indexOf(d), 1); lives[side] -= 1; });
+        deadO.forEach(d => { boards[opp].splice(boards[opp].indexOf(d), 1); lives[opp] -= 1; });
+
+        if (lives[0] <= 0 && lives[1] <= 0) return 'draw';
+        if (lives[0] <= 0) return 'lose';
+        if (lives[1] <= 0) return 'win';
+      }
+    }
+  }
+  if (lives[0] > lives[1]) return 'win';
+  if (lives[1] > lives[0]) return 'lose';
+  return 'draw';
+}
+
+function runAutoSim(n) {
+  const ruleMode = document.getElementById('ruleMode').value;
+  const area = document.getElementById('simResultArea');
+  area.innerHTML = '計算中...';
+  setTimeout(() => {
+    const types = ['standard', 'aggro', 'defense', 'heavy'];
+    let html = `<table><tr><th>対戦CPU</th><th>あなた側(AI)勝率</th><th>CPU勝率</th><th>引き分け</th><th>判定(45〜55%)</th></tr>`;
+    types.forEach(t => {
+      let w = 0, l = 0, d = 0;
+      for (let i = 0; i < n; i++) {
+        const r = simOneGame(ruleMode, t);
+        if (r === 'win') w++;
+        else if (r === 'lose') l++;
+        else d++;
+      }
+      const wp = (w / n * 100).toFixed(1);
+      const lp = (l / n * 100).toFixed(1);
+      const dp = (d / n * 100).toFixed(1);
+      const ok = (w / n >= 0.45 && w / n <= 0.55);
+      html += `<tr>
+        <td>${CPU_META[t].label}</td>
+        <td style="font-weight:bold; color:${ok ? 'var(--success)' : 'var(--warn)'}">${wp}%</td>
+        <td>${lp}%</td>
+        <td>${dp}%</td>
+        <td>${ok ? 'OK' : '範囲外'}</td>
+      </tr>`;
+    });
+    html += `</table>`;
+    area.innerHTML = html;
+  }, 20);
+}
+
+initData();
+</script>
 </body>
 </html>
