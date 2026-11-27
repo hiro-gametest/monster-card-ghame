@@ -327,19 +327,19 @@
 <script>
 // 初期カード定義（最新仕様Excel準拠）
 const DEFAULT_CARDS = [
-  { id:'hiyoko',     name:'ヒヨコ', cost:0, e:3, atk:1, hp:1, ability:'',       s_you:5, s_aggro:4, s_def:5, s_heavy:7, e_you:4, e_aggro:4, e_def:6, e_heavy:5 },
-  { id:'kobold',     name:'コボルド', cost:1, e:2, atk:1, hp:2, ability:'',     s_you:3, s_aggro:3, s_def:5, s_heavy:4, e_you:2, e_aggro:2, e_def:4, e_heavy:2 },
-  { id:'nezumi',     name:'ネズミ', cost:1, e:2, atk:2, hp:1, ability:'',       s_you:3, s_aggro:5, s_def:4, s_heavy:1, e_you:2, e_aggro:2, e_def:3, e_heavy:0 },
-  { id:'goblin',     name:'ゴブリン', cost:2, e:2, atk:2, hp:2, ability:'',     s_you:5, s_aggro:4, s_def:6, s_heavy:4, e_you:3, e_aggro:5, e_def:5, e_heavy:3 },
-  { id:'orc',        name:'オーク', cost:2, e:1, atk:3, hp:3, ability:'',       s_you:3, s_aggro:5, s_def:3, s_heavy:3, e_you:3, e_aggro:5, e_def:3, e_heavy:2 },
-  { id:'turtle',     name:'亀',     cost:2, e:1, atk:1, hp:5, ability:'',       s_you:3, s_aggro:0, s_def:3, s_heavy:0, e_you:3, e_aggro:0, e_def:3, e_heavy:2 },
-  { id:'kenshi',     name:'剣士',   cost:3, e:1, atk:4, hp:2, ability:'',       s_you:3, s_aggro:3, s_def:0, s_heavy:3, e_you:3, e_aggro:4, e_def:0, e_heavy:4 },
-  { id:'kishi',      name:'騎士',   cost:3, e:1, atk:3, hp:4, ability:'',       s_you:3, s_aggro:6, s_def:2, s_heavy:2, e_you:3, e_aggro:5, e_def:3, e_heavy:4 },
-  { id:'ryu',        name:'竜',     cost:5, e:0, atk:5, hp:4, ability:'',       s_you:1, s_aggro:0, s_def:0, s_heavy:3, e_you:2, e_aggro:1, e_def:0, e_heavy:3 },
-  { id:'kyojin',     name:'巨人',   cost:4, e:0, atk:3, hp:6, ability:'',       s_you:1, s_aggro:0, s_def:2, s_heavy:3, e_you:1, e_aggro:0, e_def:0, e_heavy:1 },
-  { id:'ansatsusha', name:'暗殺者', cost:2, e:1, atk:2, hp:1, ability:'evade',  s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:2, e_aggro:2, e_def:0, e_heavy:1 },
-  { id:'sogekishu',  name:'狙撃手', cost:2, e:1, atk:1, hp:2, ability:'snipe',  s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:1, e_aggro:0, e_def:2, e_heavy:3 },
-  { id:'hokyuhei',   name:'補給兵', cost:2, e:1, atk:1, hp:2, ability:'supply', s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:1, e_aggro:0, e_def:1, e_heavy:0 }
+  { id:'hiyoko',     name:'ヒヨコ',   cost:0, e:3, atk:1, hp:1, ability:'',       s_you:5, s_aggro:4, s_def:5, s_heavy:7, e_you:4, e_aggro:4, e_def:6, e_heavy:5 },
+  { id:'kobold',     name:'コボルド', cost:1, e:2, atk:1, hp:2, ability:'',       s_you:3, s_aggro:3, s_def:5, s_heavy:4, e_you:2, e_aggro:2, e_def:4, e_heavy:2 },
+  { id:'nezumi',     name:'ネズミ',   cost:1, e:2, atk:2, hp:1, ability:'',       s_you:3, s_aggro:5, s_def:4, s_heavy:1, e_you:2, e_aggro:2, e_def:3, e_heavy:0 },
+  { id:'goblin',     name:'ゴブリン', cost:2, e:2, atk:2, hp:2, ability:'',       s_you:5, s_aggro:4, s_def:6, s_heavy:4, e_you:3, e_aggro:5, e_def:5, e_heavy:3 },
+  { id:'orc',        name:'オーク',   cost:2, e:1, atk:3, hp:3, ability:'',       s_you:3, s_aggro:5, s_def:3, s_heavy:3, e_you:3, e_aggro:5, e_def:3, e_heavy:2 },
+  { id:'turtle',     name:'亀',       cost:2, e:1, atk:1, hp:5, ability:'',       s_you:3, s_aggro:0, s_def:3, s_heavy:0, e_you:3, e_aggro:0, e_def:3, e_heavy:2 },
+  { id:'kenshi',     name:'剣士',     cost:3, e:1, atk:4, hp:2, ability:'',       s_you:3, s_aggro:3, s_def:0, s_heavy:3, e_you:3, e_aggro:4, e_def:0, e_heavy:4 },
+  { id:'kishi',      name:'騎士',     cost:3, e:1, atk:3, hp:4, ability:'',       s_you:3, s_aggro:6, s_def:2, s_heavy:2, e_you:3, e_aggro:5, e_def:3, e_heavy:4 },
+  { id:'ryu',        name:'竜',       cost:5, e:0, atk:5, hp:4, ability:'',       s_you:1, s_aggro:0, s_def:0, s_heavy:3, e_you:2, e_aggro:1, e_def:0, e_heavy:3 },
+  { id:'kyojin',     name:'巨人',     cost:4, e:0, atk:3, hp:6, ability:'',       s_you:1, s_aggro:0, s_def:2, s_heavy:3, e_you:1, e_aggro:0, e_def:0, e_heavy:1 },
+  { id:'ansatsusha', name:'暗殺者',   cost:2, e:1, atk:2, hp:1, ability:'evade',  s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:2, e_aggro:2, e_def:0, e_heavy:1 },
+  { id:'sogekishu',  name:'狙撃手',   cost:2, e:1, atk:1, hp:2, ability:'snipe',  s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:1, e_aggro:0, e_def:2, e_heavy:3 },
+  { id:'hokyuhei',   name:'補給兵',   cost:2, e:1, atk:1, hp:2, ability:'supply', s_you:0, s_aggro:0, s_def:0, s_heavy:0, e_you:1, e_aggro:0, e_def:1, e_heavy:0 }
 ];
 
 const EMOJI_MAP = {
@@ -413,14 +413,12 @@ function cardsToCsv(list) {
     c.s_you, c.s_aggro, c.s_def, c.s_heavy,
     c.e_you, c.e_aggro, c.e_def, c.e_heavy
   ].join(','));
-  return [header, ...lines].join('
-');
+  return [header, ...lines].join('\n');
 }
 
 function parseCsvToCards(text) {
-  const clean = text.replace(/^﻿/, '').trim();
-  const lines = clean.split(/?
-/).filter(l => l.trim() !== '');
+  const clean = text.replace(/^\uFEFF/, '').trim();
+  const lines = clean.split(/\r?\n/).filter(l => l.trim() !== '');
   if (lines.length < 2) throw new Error('CSVの行数が不足しています。');
   const headers = lines[0].split(',').map(h => h.trim());
   const required = ['id','name','cost','e','atk','hp'];
@@ -491,7 +489,7 @@ function loadCsvFile(event) {
 }
 
 function downloadCsvFile() {
-  const csv = '﻿' + cardsToCsv(cardMaster);
+  const csv = '\uFEFF' + cardsToCsv(cardMaster);
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
